@@ -4,3 +4,6 @@ python-docx
 google-generativeai
 Pillow
 openpyxl
+matplotlib
+seaborn
+scikit-learn
