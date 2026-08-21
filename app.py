@@ -1,4 +1,4 @@
-
+%%writefile app.py
 import io
 import json
 import urllib.parse
@@ -124,65 +124,67 @@ if menu_choice == "📝 Генератор карточек":
         with col3: count_hard = st.number_input("🔴 Сложных вопросов:", min_value=0, max_value=5, value=1)
 
         if st.button("🚀 Сгенерировать варианты в Word", type="primary", use_container_width=True):
-            try:
-                with st.spinner("Генерация документов..."):
-                    df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
-                    df_students.columns = df_students.columns.astype(str).str.strip().str.lower()
-                    rename_dict = {}
-                    for col in df_questions.columns:
-                        if "сложн" in col: rename_dict[col] = "сложность"
-                        elif "тем" in col: rename_dict[col] = "тема"
-                        elif "вопрос" in col: rename_dict[col] = "вопрос"
-                        elif "ответ" in col: rename_dict[col] = "ответ"
-                    df_questions = df_questions.rename(columns=rename_dict)
-                    student_col = [c for c in df_students.columns if "фио" in c]
-                    student_col_name = student_col[0] if student_col else df_students.columns[0]
-                    students = df_students[student_col_name].dropna().tolist()
+            if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
+            else:
+                try:
+                    with st.spinner("⏳ ИИ обрабатывает банк вопросов и формирует индивидуальные варианты..."):
+                        df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
+                        df_students.columns = df_students.columns.astype(str).str.strip().str.lower()
+                        rename_dict = {}
+                        for col in df_questions.columns:
+                            if "сложн" in col: rename_dict[col] = "сложность"
+                            elif "тем" in col: rename_dict[col] = "тема"
+                            elif "вопрос" in col: rename_dict[col] = "вопрос"
+                            elif "ответ" in col: rename_dict[col] = "ответ"
+                        df_questions = df_questions.rename(columns=rename_dict)
+                        student_col = [c for c in df_students.columns if "фио" in c]
+                        student_col_name = student_col[0] if student_col else df_students.columns[0]
+                        students = df_students[student_col_name].dropna().tolist()
 
-                doc_students = Document()
-                structure = {"Легкий": count_easy, "Средний": count_med, "Сложный": count_hard}
-                teacher_keys = []
-                for student in students:
-                    variant_questions = []
-                    for level, count in structure.items():
-                        if count > 0:
-                            subset = df_questions[df_questions["сложность"].astype(str).str.strip().str.capitalize() == level]
-                            if len(subset) == 0: subset = df_questions
-                            variant_questions.append(subset.sample(n=min(count, len(subset))))
-                    student_variant = pd.concat(variant_questions).reset_index(drop=True)
-                    title = doc_students.add_heading("Проверочная работа", level=2)
-                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p_info = doc_students.add_paragraph()
-                    p_info.add_run(f"Ученик(ца): {student}").bold = True
-                    for idx, row in student_variant.iterrows():
-                        p_q = doc_students.add_paragraph()
-                        p_q.add_run(f"Задание {idx + 1} ").bold = True
-                        p_q.add_run(f"{row['вопрос']}\n")
-                        p_q.add_run("Ответ: ____________________")
-                        teacher_keys.append({"Ученик": student, "№ Задания": idx + 1, "Ответ": row["ответ"]})
-                    doc_students.add_paragraph("--------------------------------------------------")
+                    doc_students = Document()
+                    structure = {"Легкий": count_easy, "Средний": count_med, "Сложный": count_hard}
+                    teacher_keys = []
+                    for student in students:
+                        variant_questions = []
+                        for level, count in structure.items():
+                            if count > 0:
+                                subset = df_questions[df_questions["сложность"].astype(str).str.strip().str.capitalize() == level]
+                                if len(subset) == 0: subset = df_questions
+                                variant_questions.append(subset.sample(n=min(count, len(subset))))
+                        student_variant = pd.concat(variant_questions).reset_index(drop=True)
+                        title = doc_students.add_heading("Проверочная работа", level=2)
+                        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        p_info = doc_students.add_paragraph()
+                        p_info.add_run(f"Ученик(ца): {student}").bold = True
+                        for idx, row in student_variant.iterrows():
+                            p_q = doc_students.add_paragraph()
+                            p_q.add_run(f"Задание {idx + 1} ").bold = True
+                            p_q.add_run(f"{row['вопрос']}\n")
+                            p_q.add_run("Ответ: ____________________")
+                            teacher_keys.append({"Ученик": student, "№ Задания": idx + 1, "Ответ": row["ответ"]})
+                        doc_students.add_paragraph("--------------------------------------------------")
 
-                bio_students = io.BytesIO()
-                doc_students.save(bio_students)
-                bio_students.seek(0)
-                doc_teacher = Document()
-                doc_teacher.add_heading("КЛЮЧИ (ДЛЯ УЧИТЕЛЯ)", level=1)
-                df_keys = pd.DataFrame(teacher_keys)
-                curr_st = ""
-                for _, row in df_keys.iterrows():
-                    if row["Ученик"] != curr_st:
-                        curr_st = row["Ученик"]
-                        doc_teacher.add_paragraph().add_run(f"\n👤 {row['Ученик']}").bold = True
-                    doc_teacher.add_paragraph(f"  • Задание {row['№ Задания']}: {row['Ответ']}")
-                bio_teacher = io.BytesIO()
-                doc_teacher.save(bio_teacher)
-                bio_teacher.seek(0)
+                    bio_students = io.BytesIO()
+                    doc_students.save(bio_students)
+                    bio_students.seek(0)
+                    doc_teacher = Document()
+                    doc_teacher.add_heading("КЛЮЧИ (ДЛЯ УЧИТЕЛЯ)", level=1)
+                    df_keys = pd.DataFrame(teacher_keys)
+                    curr_st = ""
+                    for _, row in df_keys.iterrows():
+                        if row["Ученик"] != curr_st:
+                            curr_st = row["Ученик"]
+                            doc_teacher.add_paragraph().add_run(f"\n👤 {row['Ученик']}").bold = True
+                        doc_teacher.add_paragraph(f"  • Задание {row['№ Задания']}: {row['Ответ']}")
+                    bio_teacher = io.BytesIO()
+                    doc_teacher.save(bio_teacher)
+                    bio_teacher.seek(0)
 
-                st.success("🎉 Документы успешно созданы!")
-                col_d1, col_d2 = st.columns(2)
-                with col_d1: st.download_button("📄 Скачать Карточки (Word)", bio_students, "Карточки.docx", use_container_width=True)
-                with col_d2: st.download_button("🔑 Скачать Ключи (Word)", bio_teacher, "Ключи.docx", use_container_width=True)
-            except Exception as e: st.error(f"Ошибка обработки: {e}")
+                    st.success("🎉 Документы успешно созданы!")
+                    col_d1, col_d2 = st.columns(2)
+                    with col_d1: st.download_button("📄 Скачать Карточки (Word)", bio_students, "Карточки.docx", use_container_width=True)
+                    with col_d2: st.download_button("🔑 Скачать Ключи (Word)", bio_teacher, "Ключи.docx", use_container_width=True)
+                except Exception as e: st.error(f"Ошибка обработки: {e}")
 
 # ==========================================
 # МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП
@@ -208,10 +210,10 @@ elif menu_choice == "📅 AI-Генератор КТП":
     else: textbook_content = st.text_area("📝 Темы:", "1. Инфо 2. Двоичная система", height=100)
 
     if st.button("🚀 Сгенерировать КТП", type="primary", use_container_width=True):
-        if not active_key: st.warning("Введите API Key!")
+        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
-                with st.spinner("Анализ ИИ..."):
+                with st.spinner("⏳ ИИ анализирует учебные материалы и формирует календарно-тематическое планирование..."):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
                     prompt = f"Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
@@ -243,10 +245,10 @@ elif menu_choice == "📋 AI-Конструктор КСП":
         target_ksp = st.text_input("ЦО:", "8.1.1.1 Перевод чисел")
 
     if st.button("🚀 Сгенерировать КСП", type="primary", use_container_width=True):
-        if not active_key: st.warning("Введите API Key!")
+        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
-                with st.spinner("Создание КСП..."):
+                with st.spinner("⏳ ИИ методист разрабатывает этапы урока, дескрипторы и дифференциацию..."):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
                     prompt = f"Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON без markdown: {{\"lesson_targets\":\"...\", \"eval_criteria\":\"...\", \"stages\":[{{\"time\":\"Начало\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
@@ -308,22 +310,23 @@ elif menu_choice == "📊 Анализ и визуализация (EDA)":
             selected_col = st.selectbox("Выберите числовой показатель для анализа:", numeric_cols)
             
             if st.button("📈 Построить графики и статистику", type="primary", use_container_width=True):
-                st.subheader("📌 Описательная статистика")
-                st.write(df_eda[selected_col].describe())
+                with st.spinner("⏳ Выполняется расчет статистических метрик и генерация графиков..."):
+                    st.subheader("📌 Описательная статистика")
+                    st.write(df_eda[selected_col].describe())
 
-                col_g1, col_g2 = st.columns(2)
-                
-                with col_g1:
-                    st.markdown("##### Гистограмма распределения")
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sns.histplot(df_eda[selected_col], kde=True, ax=ax, color='purple')
-                    st.pyplot(fig)
+                    col_g1, col_g2 = st.columns(2)
+                    
+                    with col_g1:
+                        st.markdown("##### Гистограмма распределения")
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        sns.histplot(df_eda[selected_col], kde=True, ax=ax, color='purple')
+                        st.pyplot(fig)
 
-                with col_g2:
-                    st.markdown("##### Ящик с усами (Boxplot)")
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sns.boxplot(y=df_eda[selected_col], ax=ax, color='skyblue')
-                    st.pyplot(fig)
+                    with col_g2:
+                        st.markdown("##### Ящик с усами (Boxplot)")
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        sns.boxplot(y=df_eda[selected_col], ax=ax, color='skyblue')
+                        st.pyplot(fig)
         else:
             st.warning("В файле не найдено числовых колонок для построения графиков.")
 
@@ -347,13 +350,14 @@ elif menu_choice == "🤖 ML-Прогноз уровня ученика":
         act_val = 1 if activity == "Низкая" else (2 if activity == "Средняя" else 3)
 
     if st.button("🔮 Предсказать уровень ученика", type="primary", use_container_width=True):
-        X_train = [[60, 50, 55, 1], [90, 85, 88, 3], [70, 60, 65, 2], [95, 95, 92, 3], [55, 40, 45, 1], [85, 80, 82, 2]]
-        y_train = ["Группа поддержки", "Продвинутый", "Стандартный", "Продвинутый", "Группа поддержки", "Стандартный"]
+        with st.spinner("⏳ ML-модель анализирует показатели и выстраивает классификацию..."):
+            X_train = [[60, 50, 55, 1], [90, 85, 88, 3], [70, 60, 65, 2], [95, 95, 92, 3], [55, 40, 45, 1], [85, 80, 82, 2]]
+            y_train = ["Группа поддержки", "Продвинутый", "Стандартный", "Продвинутый", "Группа поддержки", "Стандартный"]
 
-        model = RandomForestClassifier(random_state=42)
-        model.fit(X_train, y_train)
+            model = RandomForestClassifier(random_state=42)
+            model.fit(X_train, y_train)
 
-        prediction = model.predict([[att, hw, test_score, act_val]])[0]
+            prediction = model.predict([[att, hw, test_score, act_val]])[0]
 
         st.success(f"🎯 Рекомендация ML-модели: **{prediction}**")
         if prediction == "Группа поддержки":
@@ -372,33 +376,69 @@ elif menu_choice == "📷 AI-Проверка по фото":
     uploaded_image = st.file_uploader("📂 Фото работы:", type=["jpg", "png"])
     subject_check = st.selectbox("Предмет:", ["Информатика", "Математика", "Химия"])
     if uploaded_image and st.button("Проверить", type="primary"):
-        genai.configure(api_key=active_key)
-        model = genai.GenerativeModel("gemini-3.6-flash")
-        res = model.generate_content(["Проверь работу ученика, найди ошибки и дай оценку:", Image.open(uploaded_image)])
-        st.markdown(res.text)
+        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
+        else:
+            try:
+                with st.spinner("⏳ Мультимодальный ИИ распознает почерк и проверяет ход решения..."):
+                    genai.configure(api_key=active_key)
+                    model = genai.GenerativeModel("gemini-3.6-flash")
+                    res = model.generate_content(["Проверь работу ученика, найди ошибки и дай оценку:", Image.open(uploaded_image)])
+                st.markdown(res.text)
+            except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
-# МОДУЛЬ 7: ГЕНЕРАТОР ХАРАКТЕРИСТИК
+# МОДУЛЬ 7: ГЕНЕРАТОР ХАРАКТЕРИСТИК (ОБНОВЛЕННЫЙ)
 # ==========================================
 elif menu_choice == "👤 Генератор характеристик":
-    st.title("👤 Генератор характеристик")
+    st.title("👤 Генератор педагогических характеристик")
+    st.markdown("#### Составление развернутого отчета на основе ключевых параметров")
     st.divider()
-    s_name = st.text_input("ФИО:", "Иванов Иван")
-    if st.button("Создать", type="primary"):
-        genai.configure(api_key=active_key)
-        model = genai.GenerativeModel("gemini-3.6-flash")
-        res = model.generate_content(f"Напиши официальную характеристику на ученика {s_name}.")
-        st.markdown(res.text)
+
+    col_h1, col_h2 = st.columns(2)
+    with col_h1:
+        s_name = st.text_input("👤 ФИО ученика:", "Иванов Иван")
+        s_class = st.text_input("🏫 Класс:", "8 «А»")
+    with col_h2:
+        s_traits = st.text_area("🔑 Ключевые особенности и достижения:", placeholder="Пример: Ответственный, увлекается программированием, староста класса, иногда пропускает тренировки...")
+
+    if st.button("🚀 Сгенерировать характеристику", type="primary", use_container_width=True):
+        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
+        else:
+            try:
+                with st.spinner("⏳ ИИ классный руководитель формирует текст педагогической характеристики..."):
+                    genai.configure(api_key=active_key)
+                    model = genai.GenerativeModel("gemini-3.6-flash")
+                    prompt = f"Составь официальную развернутую педагогическую характеристику на ученика {s_name}, обучающегося в {s_class} классе. Учти следующие ключевые особенности и качества: {s_traits}. Напиши в официально-деловом стиле (3-4 абзаца)."
+                    res = model.generate_content(prompt)
+                
+                st.success("Характеристика готова!")
+                st.markdown(res.text)
+            except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
-# МОДУЛЬ 8: РАЗМИНКИ И ИНТЕРАКТИВЫ
+# МОДУЛЬ 8: РАЗМИНКИ И ИНТЕРАКТИВЫ (ОБНОВЛЕННЫЙ)
 # ==========================================
 elif menu_choice == "⚡ Разминки и интерактивы":
-    st.title("⚡ AI-Разминки")
+    st.title("⚡ AI-Генератор разминок и Icebreakers")
+    st.markdown("#### Интерактивы и разминки для начала урока с учетом тайминга")
     st.divider()
-    w_top = st.text_input("Тема урока:", "Алгоритмы")
-    if st.button("Подобрать", type="primary"):
-        genai.configure(api_key=active_key)
-        model = genai.GenerativeModel("gemini-3.6-flash")
-        res = model.generate_content(f"Предложи 3 интерактивные разминки для начала урока по теме: {w_top}")
-        st.markdown(res.text)
+
+    col_w1, col_w2 = st.columns(2)
+    with col_w1:
+        w_top = st.text_input("📝 Тема урока:", "Алгоритмы и ветвления")
+    with col_w2:
+        w_time = st.slider("⏳ Время на разминку (минут):", 2, 10, 5)
+
+    if st.button("🚀 Подобрать разминку", type="primary", use_container_width=True):
+        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
+        else:
+            try:
+                with st.spinner(f"⏳ ИИ подбирает креативные интерактивы ровно на {w_time} минут..."):
+                    genai.configure(api_key=active_key)
+                    model = genai.GenerativeModel("gemini-3.6-flash")
+                    prompt = f"Предложи 3 интересных варианта разминки или icebreaker на начало урока по теме: '{w_top}'. Ограничение по времени: ровно {w_time} минут. Для каждого варианта укажи суть, правила и вопросы для класса."
+                    res = model.generate_content(prompt)
+                
+                st.success("Идеи готовы!")
+                st.markdown(res.text)
+            except Exception as e: st.error(f"Ошибка: {e}")
