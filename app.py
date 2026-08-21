@@ -12,7 +12,6 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 
-# Для аналитики, визуализации и ML
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
@@ -292,7 +291,7 @@ elif menu_choice == "📋 AI-Конструктор КСП":
             except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
-# НОВЫЙ МОДУЛЬ 4: АНАЛИЗ И ВИЗУАЛИЗАЦИЯ ДАННЫХ (EDA / Matplotlib / Seaborn)
+# МОДУЛЬ 4: АНАЛИЗ И ВИЗУАЛИЗАЦИЯ ДАННЫХ (EDA)
 # ==========================================
 elif menu_choice == "📊 Анализ и визуализация (EDA)":
     st.title("📊 Анализ и визуализация успеваемости класса")
@@ -304,7 +303,6 @@ elif menu_choice == "📊 Анализ и визуализация (EDA)":
         df_eda = pd.read_excel(uploaded_eda)
         st.write("📋 Предпросмотр данных:", df_eda.head())
 
-        # Числовые колонки для анализа
         numeric_cols = df_eda.select_dtypes(include=['number']).columns.tolist()
         if numeric_cols:
             selected_col = st.selectbox("Выберите числовой показатель для анализа:", numeric_cols)
@@ -330,7 +328,7 @@ elif menu_choice == "📊 Анализ и визуализация (EDA)":
             st.warning("В файле не найдено числовых колонок для построения графиков.")
 
 # ==========================================
-# НОВЫЙ МОДУЛЬ 5: ML-ПРОГНОЗ УРОВНЯ УЧЕНИКА (Scikit-learn)
+# МОДУЛЬ 5: ML-ПРОГНОЗ УРОВНЯ УЧЕНИКА
 # ==========================================
 elif menu_choice == "🤖 ML-Прогноз уровня ученика":
     st.title("🤖 Машинное обучение в образовании (Scikit-learn)")
@@ -349,8 +347,6 @@ elif menu_choice == "🤖 ML-Прогноз уровня ученика":
         act_val = 1 if activity == "Низкая" else (2 if activity == "Средняя" else 3)
 
     if st.button("🔮 Предсказать уровень ученика", type="primary", use_container_width=True):
-        # Обучаем простую мини-модель на синтетических обучающих данных прямо «на лету»
-        # Признаки: [Посещаемость, ДЗ, Балл тестов, Активность]
         X_train = [[60, 50, 55, 1], [90, 85, 88, 3], [70, 60, 65, 2], [95, 95, 92, 3], [55, 40, 45, 1], [85, 80, 82, 2]]
         y_train = ["Группа поддержки", "Продвинутый", "Стандартный", "Продвинутый", "Группа поддержки", "Стандартный"]
 
