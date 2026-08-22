@@ -1,3 +1,4 @@
+
 import io
 import json
 import urllib.parse
@@ -245,12 +246,10 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Общий фон приложения */
     .stApp {
         background: linear-gradient(135deg, #f4f6f9 0%, #edf2f7 100%);
     }
     
-    /* Основной контейнер с эффектом карточки */
     .block-container {
         background-color: #ffffff;
         border-radius: 24px;
@@ -261,7 +260,7 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* Боковая панель */
+    /* Стили боковой панели */
     [data-testid="stSidebar"] {
         background-color: #0f172a;
         color: #ffffff;
@@ -275,7 +274,13 @@ st.markdown("""
         color: #e2e8f0 !important;
     }
     
-    /* Кнопки */
+    /* ИСПРАВЛЕНИЕ: Делаем текст радиокнопок в сайдбаре четким и белым */
+    [data-testid="stSidebar"] .stRadio label p {
+        color: #f8fafc !important;
+        font-weight: 500;
+        font-size: 15px;
+    }
+    
     .stButton>button {
         border-radius: 14px;
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
@@ -293,7 +298,6 @@ st.markdown("""
         background: linear-gradient(135deg, #4f46e5 100%, #4338ca 100%);
     }
     
-    /* Заголовки */
     h1 {
         color: #0f172a;
         font-weight: 800;
@@ -305,13 +309,11 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Поля ввода */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
         border-radius: 12px;
         border: 1px solid #cbd5e1;
     }
     
-    /* Скрываем лишние элементы Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -320,9 +322,9 @@ st.markdown("""
 DEFAULT_API_KEY = ""
 
 # ==========================================
-# 2. БОКОВОЕ МЕНЮ И ЯЗЫК
+# 2. БОКОВОЕ МЕНЮ И ВЫБОР ЯЗЫКА
 # ==========================================
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/1972/1972413.png", width=70)
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/1972/1972413.png", width=60)
 
 lang_choice = st.sidebar.selectbox("🌐 Тіл / Язык интерфейса:", ["Русский", "Қазақша"], index=0)
 lang = "ru" if lang_choice == "Русский" else "kk"
@@ -361,7 +363,8 @@ st.sidebar.caption(t["footer"])
 # МОДУЛЬ 1: ГЕНЕРАТОР КАРТОЧЕК
 # ==========================================
 if menu_choice in ["📝 Генератор карточек", "📝 Тапсырма карточкаларын жасау"]:
-    st.title(f"📝 {menu_choice}")
+    # ИСПРАВЛЕНИЕ: Убрали эмодзи из st.title, чтобы она не дублировалась
+    st.title(menu_choice)
     st.markdown(f"#### {'Автоматическая генерация индивидуальных вариантов в Word' if lang=='ru' else 'Word форматында жеке нұсқаларды автоматты түрде жасау'}")
     st.divider()
 
@@ -468,7 +471,7 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
 # МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП (WORD)
 # ==========================================
 elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Генераторы"]:
-    st.title(f"📅 {menu_choice}")
+    st.title(menu_choice)
     st.divider()
     col_p1, col_p2 = st.columns(2)
     with col_p1:
@@ -541,7 +544,7 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
 # МОДУЛЬ 3: AI-КОНСТРУКТОР КСП
 # ==========================================
 elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КСП) AI-Конструкторы"]:
-    st.title(f"📋 {menu_choice}")
+    st.title(menu_choice)
     st.divider()
     col_k1, col_k2 = st.columns(2)
     with col_k1:
@@ -604,7 +607,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 # МОДУЛЬ 4: EDA
 # ==========================================
 elif menu_choice in ["📊 Анализ и визуализация (EDA)", "📊 Талдау және визуализация (EDA)"]:
-    st.title(f"📊 {menu_choice}")
+    st.title(menu_choice)
     st.markdown(f"#### {t['eda_sub']}")
     st.divider()
     uploaded_eda = st.file_uploader(f"📂 {t['eda_load']}", type=["xlsx"])
@@ -633,7 +636,7 @@ elif menu_choice in ["📊 Анализ и визуализация (EDA)", "�
 # МОДУЛЬ 5: ML
 # ==========================================
 elif menu_choice in ["🤖 ML-Прогноз уровня ученика", "🤖 Оқушы деңгейін ML болжау"]:
-    st.title(f"🤖 {menu_choice}")
+    st.title(menu_choice)
     st.markdown(f"#### {t['ml_sub']}")
     st.divider()
     st.write(t["ml_txt"])
@@ -658,7 +661,7 @@ elif menu_choice in ["🤖 ML-Прогноз уровня ученика", "🤖
 # МОДУЛЬ 6: AI-ПРОВЕРКА ПО ФОТО
 # ==========================================
 elif menu_choice in ["📷 AI-Проверка по фото", "📷 Фото арқылы AI тексеру"]:
-    st.title(f"📷 {menu_choice}")
+    st.title(menu_choice)
     st.divider()
     img = st.file_uploader(f"📂 {t['photo_load']}", type=["jpg", "png"])
     if img and st.button(t["photo_check"], type="primary"):
@@ -674,7 +677,7 @@ elif menu_choice in ["📷 AI-Проверка по фото", "📷 Фото а
 # МОДУЛЬ 7: ХАРАКТЕРИСТИКА
 # ==========================================
 elif menu_choice in ["👤 Генератор характеристик", "👤 Мінездеме генераторы"]:
-    st.title(f"👤 {menu_choice}")
+    st.title(menu_choice)
     st.markdown(f"#### {t['char_sub']}")
     st.divider()
     col_h1, col_h2 = st.columns(2)
@@ -702,7 +705,7 @@ elif menu_choice in ["👤 Генератор характеристик", "👤
 # МОДУЛЬ 8: РАЗМИНКИ
 # ==========================================
 elif menu_choice in ["⚡ Разминки и интерактивы", "⚡ Сергіту сәттері мен интерактив"]:
-    st.title(f"⚡ {menu_choice}")
+    st.title(menu_choice)
     st.markdown(f"#### {t['warm_sub']}")
     st.divider()
     col_w1, col_w2 = st.columns(2)
