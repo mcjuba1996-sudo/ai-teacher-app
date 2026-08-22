@@ -11,11 +11,26 @@ from PIL import Image
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.ensemble import RandomForestClassifier
 
-# Добавляем Google Analytics
-def inject_ga():
-    GA_ID = "G-0EW4TYEDKE" # Вставьте сюда ваш ID
-    ga_js = f"""
+# ==========================================
+# 0. НАСТРОЙКИ АНАЛИТИКИ И ДИЗАЙНА
+# ==========================================
+def track_event(action, category, label):
+    components.html(f"""
+        <script>
+            gtag('event', '{action}', {{
+                'event_category': '{category}',
+                'event_label': '{label}'
+            }});
+        </script>
+    """, height=0, width=0)
+# ==========================================
+# Google Analytics (замените G-XXXXXXXXXX на ваш ID!)
+GA_ID = "G-G-0EW4TYEDKE" 
+components.html(f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -23,17 +38,7 @@ def inject_ga():
         gtag('js', new Date());
         gtag('config', '{GA_ID}');
     </script>
-    """
-    components.html(ga_js, height=0, width=0)
-
-# Вызываем функцию сразу при запуске
-inject_ga()
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.ensemble import RandomForestClassifier
-
-# ==========================================
+""", height=0, width=0)
 # 1. НАСТРОЙКИ ДИЗАЙНА (CSS)
 # ==========================================
 st.set_page_config(page_title="AI-Помощник Учителя", page_icon="🎓", layout="wide")
@@ -141,6 +146,7 @@ if menu_choice == "📝 Генератор карточек":
         with col3: count_hard = st.number_input("🔴 Сложных вопросов:", min_value=0, max_value=5, value=1)
 
         if st.button("🚀 Сгенерировать варианты в Word", type="primary", use_container_width=True):
+            track_event('generate_cards', 'Module_Action', 'Cards_Generator')
             if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
             else:
                 try:
@@ -227,6 +233,7 @@ elif menu_choice == "📅 AI-Генератор КТП":
     else: textbook_content = st.text_area("📝 Темы:", "1. Инфо 2. Двоичная система", height=100)
 
     if st.button("🚀 Сгенерировать КТП", type="primary", use_container_width=True):
+        track_event('generate_ktp', 'Module_Action', 'KTP_Generator')
         if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
@@ -262,6 +269,7 @@ elif menu_choice == "📋 AI-Конструктор КСП":
         target_ksp = st.text_input("ЦО:", "8.1.1.1 Перевод чисел")
 
     if st.button("🚀 Сгенерировать КСП", type="primary", use_container_width=True):
+        track_event('generate_ksp', 'Module_Action', 'KSP_Generator')
         if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
@@ -327,6 +335,7 @@ elif menu_choice == "📊 Анализ и визуализация (EDA)":
             selected_col = st.selectbox("Выберите числовой показатель для анализа:", numeric_cols)
             
             if st.button("📈 Построить графики и статистику", type="primary", use_container_width=True):
+                track_event('run_eda', 'Module_Action', 'EDA_Analysis')
                 with st.spinner("⏳ Выполняется расчет статистических метрик и генерация графиков..."):
                     st.subheader("📌 Описательная статистика")
                     st.write(df_eda[selected_col].describe())
@@ -367,6 +376,7 @@ elif menu_choice == "🤖 ML-Прогноз уровня ученика":
         act_val = 1 if activity == "Низкая" else (2 if activity == "Средняя" else 3)
 
     if st.button("🔮 Предсказать уровень ученика", type="primary", use_container_width=True):
+        track_event('ml_predict', 'Module_Action', 'ML_Prediction')
         with st.spinner("⏳ ML-модель анализирует показатели и выстраивает классификацию..."):
             X_train = [[60, 50, 55, 1], [90, 85, 88, 3], [70, 60, 65, 2], [95, 95, 92, 3], [55, 40, 45, 1], [85, 80, 82, 2]]
             y_train = ["Группа поддержки", "Продвинутый", "Стандартный", "Продвинутый", "Группа поддержки", "Стандартный"]
@@ -393,6 +403,7 @@ elif menu_choice == "📷 AI-Проверка по фото":
     uploaded_image = st.file_uploader("📂 Фото работы:", type=["jpg", "png"])
     subject_check = st.selectbox("Предмет:", ["Информатика", "Математика", "Химия"])
     if uploaded_image and st.button("Проверить", type="primary"):
+        track_event('check_photo', 'Module_Action', 'Photo_Correction')
         if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
@@ -419,6 +430,7 @@ elif menu_choice == "👤 Генератор характеристик":
         s_traits = st.text_area("🔑 Ключевые особенности и достижения:", placeholder="Пример: Ответственный, увлекается программированием, староста класса, иногда пропускает тренировки...")
 
     if st.button("🚀 Сгенерировать характеристику", type="primary", use_container_width=True):
+        track_event('generate_char', 'Module_Action', 'Char_Generator')
         if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
@@ -447,6 +459,7 @@ elif menu_choice == "⚡ Разминки и интерактивы":
         w_time = st.slider("⏳ Время на разминку (минут):", 2, 10, 5)
 
     if st.button("🚀 Подобрать разминку", type="primary", use_container_width=True):
+        track_event('generate_warmup', 'Module_Action', 'Warmup_Generator')
         if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
         else:
             try:
