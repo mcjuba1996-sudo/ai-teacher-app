@@ -10,6 +10,24 @@ import google.generativeai as genai
 from PIL import Image
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
+
+# Добавляем Google Analytics
+def inject_ga():
+    GA_ID = "G-0EW4TYEDKE" # Вставьте сюда ваш ID
+    ga_js = f"""
+    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){{dataLayer.push(arguments);}}
+        gtag('js', new Date());
+        gtag('config', '{GA_ID}');
+    </script>
+    """
+    components.html(ga_js, height=0, width=0)
+
+# Вызываем функцию сразу при запуске
+inject_ga()
 
 import matplotlib.pyplot as plt
 import seaborn as sns
