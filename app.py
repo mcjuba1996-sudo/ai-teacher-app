@@ -1,3 +1,4 @@
+%%writefile app.py
 import io
 import json
 import urllib.parse
@@ -17,7 +18,7 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 
 # ==========================================
-# 0. СЛОВАРЬ ПЕРЕВОДОВ ИНТЕРФЕЙСА
+# 0. СЛОВАРЬ ПЕРЕВОДОВ ИНТЕРФЕЙСА (РАЗДЕЛЬНЫЙ)
 # ==========================================
 translations = {
     "ru": {
@@ -39,7 +40,92 @@ translations = {
             "⚡ Разминки и интерактивы",
         ],
         "no_key": "Пожалуйста, введите ваш рабочий Gemini API Key в боковом меню слева!",
-        "ai_lang_prompt": "Напиши ответ строго на русском языке."
+        "ai_lang_prompt": "Напиши ответ строго на русском языке.",
+        
+        # Общие тексты
+        "source": "Источник данных:",
+        "source_options": ["Google Таблица (ссылка)", "Excel-файл (.xlsx)"],
+        "sheet_link": "Вставьте ссылку на Google Таблицу:",
+        "upload_excel": "Загрузите Excel-файл (листы: Банк_вопросов, Ученики):",
+        "success_excel": "Excel-файл успешно прочитан!",
+        "settings": "Настройка теста",
+        "easy": "Легких вопросов:",
+        "med": "Средних вопросов:",
+        "hard": "Сложных вопросов:",
+        "gen_word": "Сгенерировать варианты в Word",
+        "wait_ai": "ИИ обрабатывает банк вопросов и формирует индивидуальные варианты...",
+        "student_lbl": "Ученик(ца):",
+        "task_lbl": "Задание",
+        "answer_lbl": "Ответ: ____________________",
+        "keys_title": "КЛЮЧИ (ДЛЯ УЧИТЕЛЯ)",
+        "done": "Готово!",
+        "download_cards": "Скачать Карточки (Word)",
+        "download_keys": "Скачать Ключи (Word)",
+        
+        "subject": "Предмет:",
+        "grade": "Класс:",
+        "quarters": "Количество четвертей:",
+        "hours": "Часов в неделю:",
+        "total_lessons": "Всего уроков:",
+        "source_pdf_text": "Источник тем:",
+        "pdf_opt": ["Загрузить PDF-файл", "Ввести темы текстом"],
+        "topics_lbl": "Темы:",
+        "gen_ktp": "Сгенерировать КТП в Word",
+        "wait_ktp": "ИИ анализирует учебные материалы и формирует КТП...",
+        "download_ktp": "Скачать КТП (Word)",
+        
+        "teacher_name": "ФИО учителя:",
+        "topic_lbl": "Тема урока:",
+        "target_lbl": "Цели обучения (ЦО):",
+        "gen_ksp": "Сгенерировать КСП в Word",
+        "wait_ksp": "ИИ методист разрабатывает этапы урока, дескрипторы и дифференциацию...",
+        "download_ksp": "Скачать КСП (Word)",
+        
+        "eda_title": "Анализ и визуализация успеваемости класса",
+        "eda_sub": "Загрузите Excel-файл с оценками учеников для описательной статистики и графиков",
+        "eda_load": "Загрузите файл с оценками (.xlsx)",
+        "eda_select": "Выберите числовой показатель для анализа:",
+        "eda_btn": "Построить графики и статистику",
+        "eda_wait": "Выполняется расчет статистических метрик и генерация графиков...",
+        "hist": "Гистограмма распределения",
+        "box": "Ящик с усами (Boxplot)",
+        
+        "ml_title": "Машинное обучение в образовании (Scikit-learn)",
+        "ml_sub": "Прогнозирование группы поддержки / продвинутого уровня с помощью Random Forest",
+        "ml_txt": "Введите показатели ученика, чтобы модель машинного обучения определила его уровень:",
+        "att": "Посещаемость уроков (%):",
+        "hw": "Выполнение домашних заданий (%):",
+        "test": "Средний балл по тестам:",
+        "activity": "Классная активность:",
+        "act_opts": ["Низкая", "Средняя", "Высокая"],
+        "ml_btn": "Предсказать уровень ученика",
+        "ml_wait": "ML-модель анализирует показатели и выстраивает классификацию...",
+        "rec": "Рекомендация ML-модели:",
+        
+        "photo_title": "AI-Проверка письменных работ",
+        "photo_load": "Фото работы:",
+        "photo_check": "Проверить работу",
+        "photo_wait": "Мультимодальный ИИ распознает почерк и проверяет ход решения...",
+        
+        "char_title": "Генератор педагогических характеристик",
+        "char_sub": "Составление развернутого отчета с учетом посещаемости, успеваемости и поведения",
+        "name_lbl": "ФИО ученика:",
+        "cls_lbl": "Класс:",
+        "att_lbl": "Посещаемость занятий (%):",
+        "perf_lbl": "Успеваемость:",
+        "perf_opts": ["Отличник", "Ударник", "Занимается средне", "Имеет академические задолженности"],
+        "beh_lbl": "Поведение и дисциплина:",
+        "beh_opts": ["Дисциплинирован, примерное поведение", "Спокойный, исполнительный", "Иногда нарушает дисциплину", "Требует повышенного педагогического внимания"],
+        "traits_lbl": "Дополнительные достижения, склонности и заметки:",
+        "char_btn": "Сгенерировать характеристику",
+        "char_wait": "ИИ классный руководитель формирует текст педагогической характеристики...",
+        
+        "warm_title": "AI-Генератор разминок и Icebreakers",
+        "warm_sub": "Интерактивы и разминки для начала урока с учетом тайминга",
+        "warm_top": "Тема урока:",
+        "warm_time": "Время на разминку (минут):",
+        "warm_btn": "Подобрать разминку",
+        "warm_wait": "ИИ подбирает креативные интерактивы...",
     },
     "kk": {
         "page_title": "AI Мұғалім Көмекшісі",
@@ -60,7 +146,92 @@ translations = {
             "⚡ Сергіту сәттері мен интерактив",
         ],
         "no_key": "Сол жақ бүйірлік мәзірге жұмыс істейтін Gemini API Key енгізіңіз!",
-        "ai_lang_prompt": "Жауапты қатаң түрде қазақ тілінде жаз."
+        "ai_lang_prompt": "Жауапты қатаң түрде қазақ тілінде жаз.",
+        
+        # Общие тексты
+        "source": "Дереккөз:",
+        "source_options": ["Google Кесте (сілтеме)", "Excel-файл (.xlsx)"],
+        "sheet_link": "Google кестенің сілтемесін енгізіңіз:",
+        "upload_excel": "Excel файлын жүктеңіз (парақтар: Банк_вопросов, Ученики):",
+        "success_excel": "Excel файлы сәтті оқылды!",
+        "settings": "Тест баптаулары",
+        "easy": "Жеңіл сұрақтар:",
+        "med": "Орташа сұрақтар:",
+        "hard": "Қиын сұрақтар:",
+        "gen_word": "Word форматында нұсқаларды жасау",
+        "wait_ai": "ЖИ сұрақтар банкін өңдеп, жеке нұсқаларды дайындауда...",
+        "student_lbl": "Оқушы:",
+        "task_lbl": "Тапсырма",
+        "answer_lbl": "Жауап: ____________________",
+        "keys_title": "ЖАУАПТАР (МҰҒАЛІМГЕ ҮШІН)",
+        "done": "Дайын!",
+        "download_cards": "Карточкаларды жүктеу (Word)",
+        "download_keys": "Жауаптарды жүктеу (Word)",
+        
+        "subject": "Пән:",
+        "grade": "Сынып:",
+        "quarters": "Тоқсан саны:",
+        "hours": "Аптасына сағат:",
+        "total_lessons": "Барлық сағат:",
+        "source_pdf_text": "Тақырыптар көзі:",
+        "pdf_opt": ["PDF файлын жүктеу", "Тақырыптарды мәтін түрінде енгізу"],
+        "topics_lbl": "Тақырыптар:",
+        "gen_ktp": "Word форматында КТП құру",
+        "wait_ktp": "ЖИ оқу материалдарын талдап, КТП құруда...",
+        "download_ktp": "КТП жүктеу (Word)",
+        
+        "teacher_name": "Мұғалімнің аты-жөні:",
+        "topic_lbl": "Сабақ тақырыбы:",
+        "target_lbl": "Оқыту мақсаттары (ОМ):",
+        "gen_ksp": "Word форматында ҚМЖ құру",
+        "wait_ksp": "ЖИ әдіскер сабақ кезеңдерін, дескрипторларды әзірлеуде...",
+        "download_ksp": "ҚМЖ жүктеу (Word)",
+        
+        "eda_title": "Сыныптың үлгерімін талдау және визуализация",
+        "eda_sub": "Сипаттамалық статистика мен графиктер үшін оқушылардың бағалары бар Excel файлын жүктеңіз",
+        "eda_load": "Бағалар файлын жүктеңіз (.xlsx)",
+        "eda_select": "Талдау үшін сандық көрсеткішті таңдаңыз:",
+        "eda_btn": "Графиктер мен статистиканы құру",
+        "eda_wait": "Статистикалық метрикалар есептеліп, графиктер жасалуда...",
+        "hist": "Бөлініс гистограммасы",
+        "box": "Жәшік диаграммасы (Boxplot)",
+        
+        "ml_title": "Білім берудегі машиналық оқыту (Scikit-learn)",
+        "ml_sub": "Random Forest көмегімен қолдау тобын / жоғары деңгейді болжау",
+        "ml_txt": "Машиналық оқыту моделі оқушының деңгейін анықтауы үшін көрсеткіштерін енгізіңіз:",
+        "att": "Сабаққа қатысу (%):",
+        "hw": "Үй жұмысын орындау (%):",
+        "test": "Тесттердің орташа балы:",
+        "activity": "Сыныптағы белсенділік:",
+        "act_opts": ["Төмен", "Орташа", "Жоғары"],
+        "ml_btn": "Оқушы деңгейін болжау",
+        "ml_wait": "ML моделі көрсеткіштерді талдап, жіктеуді жүргізуде...",
+        "rec": "ML моделінің ұсынысы:",
+        
+        "photo_title": "Жазбаша жұмыстарды AI тексеру",
+        "photo_load": "Жұмыс фотосы:",
+        "photo_check": "Жұмысты тексеру",
+        "photo_wait": "Мультимодальды ЖИ қолжазбаны танып, шешу жолын тексеруде...",
+        
+        "char_title": "Педагогикалық мінездеме генераторы",
+        "char_sub": "Сабаққа қатысуды, үлгерімді және тәртіпті ескере отырып мінездеме жасау",
+        "name_lbl": "Оқушының аты-жөні:",
+        "cls_lbl": "Сынып:",
+        "att_lbl": "Сабаққа қатысу (%):",
+        "perf_lbl": "Үлгерім:",
+        "perf_opts": ["Үздік", "Екпінді", "Орташа оқиды", "Академиялық қарыздары бар"],
+        "beh_lbl": "Тәртіп пен мінез-құлық:",
+        "beh_opts": ["Тәртіпті, үлгілі мінез-құлық", "Сабырлы, жауапкершілікті", "Кейде тәртіпті бұзады", "Педагогикалық бақылауды қажет етеді"],
+        "traits_lbl": "Қосымша жетістіктер, бейімділіктер және ескертпелер:",
+        "char_btn": "Мінездеме құру",
+        "char_wait": "ЖИ сынып жетекшісі мінездеме мәтінін дайындауда...",
+        
+        "warm_title": "AI Сергіту сәттері мен Icebreakers генераторы",
+        "warm_sub": "Уақытты ескере отырып, сабақ басына арналған интерактивтер",
+        "warm_top": "Сабақ тақырыбы:",
+        "warm_time": "Сергіту сәтіне берілген уақыт (минут):",
+        "warm_btn": "Сергіту сәтін таңдау",
+        "warm_wait": "ЖИ креативті интерактивтерді таңдауда...",
     }
 }
 
@@ -93,14 +264,15 @@ st.sidebar.image("https://cdn-icons-png.flaticon.com/512/1972/1972413.png", widt
 
 lang_choice = st.sidebar.selectbox("🌐 Тіл / Язык:", ["Русский", "Қазақша"], index=0)
 lang = "ru" if lang_choice == "Русский" else "kk"
+t = translations[lang]
 
-st.sidebar.title(translations[lang]["sidebar_title"])
+st.sidebar.title(t["sidebar_title"])
 st.sidebar.markdown("---")
 
-st.sidebar.subheader(translations[lang]["api_subheader"])
-global_api_key = st.sidebar.text_input("Gemini API Key:", type="password", help=translations[lang]["api_help"])
+st.sidebar.subheader(t["api_subheader"])
+global_api_key = st.sidebar.text_input("Gemini API Key:", type="password", help=t["api_help"])
 
-with st.sidebar.expander(translations[lang]["api_expander"]):
+with st.sidebar.expander(t["api_expander"]):
     st.markdown("""
     1. Зайдите на [Google AI Studio](https://aistudio.google.com/app/apikey).
     2. Войдите через Google-аккаунт.
@@ -111,32 +283,32 @@ with st.sidebar.expander(translations[lang]["api_expander"]):
 active_key = global_api_key if global_api_key else DEFAULT_API_KEY
 
 st.sidebar.markdown("---")
-st.sidebar.subheader(translations[lang]["tools_subheader"])
+st.sidebar.subheader(t["tools_subheader"])
 
 menu_choice = st.sidebar.radio(
     "Навигация:",
-    translations[lang]["menu"],
+    t["menu"],
     label_visibility="collapsed"
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption(translations[lang]["footer"])
+st.sidebar.caption(t["footer"])
 
 
 # ==========================================
 # МОДУЛЬ 1: ГЕНЕРАТОР КАРТОЧЕК
 # ==========================================
 if menu_choice in ["📝 Генератор карточек", "📝 Тапсырма карточкаларын жасау"]:
-    st.title("📝 " + ("Генератор карточек с заданиями" if lang=="ru" else "Тапсырма карточкаларын жасау генераторы"))
+    st.title("📝 " + menu_choice)
     st.markdown("#### " + ("Автоматическая генерация индивидуальных вариантов в Word" if lang=="ru" else "Word форматында жеке нұсқаларды автоматты түрде жасау"))
     st.divider()
 
-    source_type = st.radio("Дереккөз / Источник:" if lang=="kk" else "Источник данных:", ["Google Таблица (ссылка)" if lang=="ru" else "Google Кесте (сілтеме)", "Excel-файл (.xlsx)"], horizontal=True)
+    source_type = st.radio(t["source"], t["source_options"], horizontal=True)
     df_questions, df_students = None, None
 
     if "Google" in source_type:
         default_url = "https://docs.google.com/spreadsheets/d/1fJKlRP7YY3r6DFjd_PuLXFIKkg3GdSRAM9Rxwq502e8/edit?usp=sharing"
-        sheet_url = st.text_input("🔗 " + ("Вставьте ссылку на Google Таблицу:" if lang=="ru" else "Google кесте сілтемесін енгізіңіз:"))
+        sheet_url = st.text_input("🔗 " + t["sheet_link"], value=default_url)
         def extract_sheet_id(url):
             try: return url.split("/d/")[1].split("/")[0] if "/d/" in url else url
             except: return None
@@ -151,27 +323,27 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                     df_students = pd.read_csv(get_url("Ученики"))
                 except: pass
     else:
-        uploaded_excel = st.file_uploader("📂 " + ("Загрузите Excel-файл (листы: Банк_вопросов, Ученики):" if lang=="ru" else "Excel файлын жүктеңіз:"), type=["xlsx"])
+        uploaded_excel = st.file_uploader("📂 " + t["upload_excel"], type=["xlsx"])
         if uploaded_excel:
             try:
                 xls = pd.ExcelFile(uploaded_excel)
                 df_questions = pd.read_excel(xls, 'Банк_вопросов')
                 df_students = pd.read_excel(xls, 'Ученики')
-                st.success("Excel сәтті оқылды!" if lang=="kk" else "Excel-файл успешно прочитан!")
+                st.success(t["success_excel"])
             except Exception as e: st.error(f"Ошибка: {e}")
 
     if df_questions is not None and df_students is not None:
-        st.markdown("#### ⚙️ " + ("Настройка теста" if lang=="ru" else "Тест баптаулары"))
+        st.markdown("#### ⚙️ " + t["settings"])
         col1, col2, col3 = st.columns(3)
-        with col1: count_easy = st.number_input("🟢 " + ("Легких:" if lang=="ru" else "Жеңіл:"), min_value=0, max_value=5, value=1)
-        with col2: count_med = st.number_input("🟡 " + ("Средних:" if lang=="ru" else "Орташа:"), min_value=0, max_value=5, value=1)
-        with col3: count_hard = st.number_input("🔴 " + ("Сложных:" if lang=="ru" else "Қиын:"), min_value=0, max_value=5, value=1)
+        with col1: count_easy = st.number_input("🟢 " + t["easy"], min_value=0, max_value=5, value=1)
+        with col2: count_med = st.number_input("🟡 " + t["med"], min_value=0, max_value=5, value=1)
+        with col3: count_hard = st.number_input("🔴 " + t["hard"], min_value=0, max_value=5, value=1)
 
-        if st.button("🚀 " + ("Сгенерировать варианты в Word" if lang=="ru" else "Word форматында жасау"), type="primary", use_container_width=True):
-            if not active_key: st.warning(translations[lang]["no_key"])
+        if st.button("🚀 " + t["gen_word"], type="primary", use_container_width=True):
+            if not active_key: st.warning(t["no_key"])
             else:
                 try:
-                    with st.spinner("⏳ " + ("ИИ обрабатывает банк вопросов..." if lang=="ru" else "ЖИ сұрақтар банкін өңдеуде...")):
+                    with st.spinner("⏳ " + t["wait_ai"]):
                         df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
                         df_students.columns = df_students.columns.astype(str).str.strip().str.lower()
                         rename_dict = {}
@@ -199,12 +371,12 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                         title = doc_students.add_heading("Проверочная работа" if lang=="ru" else "Бақылау жұмысы", level=2)
                         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         p_info = doc_students.add_paragraph()
-                        p_info.add_run(f"Ученик(ца) / Оқушы: {student}").bold = True
+                        p_info.add_run(f"{t['student_lbl']} {student}").bold = True
                         for idx, row in student_variant.iterrows():
                             p_q = doc_students.add_paragraph()
-                            p_q.add_run(f"Задание {idx + 1} / {idx+1}-тапсырма: ").bold = True
+                            p_q.add_run(f"{t['task_lbl']} {idx + 1} ").bold = True
                             p_q.add_run(f"{row['вопрос']}\n")
-                            p_q.add_run("Ответ / Жауап: ____________________")
+                            p_q.add_run(t["answer_lbl"])
                             teacher_keys.append({"Ученик": student, "№ Задания": idx + 1, "Ответ": row["ответ"]})
                         doc_students.add_paragraph("--------------------------------------------------")
 
@@ -212,54 +384,54 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                     doc_students.save(bio_students)
                     bio_students.seek(0)
                     doc_teacher = Document()
-                    doc_teacher.add_heading("КЛЮЧИ (ДЛЯ УЧИТЕЛЯ) / ЖАУАПТАР", level=1)
+                    doc_teacher.add_heading(t["keys_title"], level=1)
                     df_keys = pd.DataFrame(teacher_keys)
                     curr_st = ""
                     for _, row in df_keys.iterrows():
                         if row["Ученик"] != curr_st:
                             curr_st = row["Ученик"]
                             doc_teacher.add_paragraph().add_run(f"\n👤 {row['Ученик']}").bold = True
-                        doc_teacher.add_paragraph(f"  • Задание {row['№ Задания']}: {row['Ответ']}")
+                        doc_teacher.add_paragraph(f"  • {t['task_lbl']} {row['№ Задания']}: {row['Ответ']}")
                     bio_teacher = io.BytesIO()
                     doc_teacher.save(bio_teacher)
                     bio_teacher.seek(0)
 
-                    st.success("🎉 Готово!" if lang=="ru" else "🎉 Дайын!")
+                    st.success("🎉 " + t["done"])
                     col_d1, col_d2 = st.columns(2)
-                    with col_d1: st.download_button("📄 " + ("Скачать Карточки" if lang=="ru" else "Карточкаларды жүктеу"), bio_students, "Карточки.docx", use_container_width=True)
-                    with col_d2: st.download_button("🔑 " + ("Скачать Ключи" if lang=="ru" else "Жауаптарды жүктеу"), bio_teacher, "Ключи.docx", use_container_width=True)
+                    with col_d1: st.download_button("📄 " + t["download_cards"], bio_students, "Карточки.docx", use_container_width=True)
+                    with col_d2: st.download_button("🔑 " + t["download_keys"], bio_teacher, "Ключи.docx", use_container_width=True)
                 except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
-# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП (ИЗМЕНЕН НА WORD)
+# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП (WORD)
 # ==========================================
 elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Генераторы"]:
-    st.title("📅 AI-Генератор КТП")
+    st.title("📅 " + menu_choice)
     st.divider()
     col_p1, col_p2 = st.columns(2)
     with col_p1:
-        subject = st.text_input("📚 Предмет / Пән:", "Информатика")
-        grade = st.number_input("🏫 Класс / Сынып:", 1, 11, 8)
+        subject = st.text_input(t["subject"], "Информатика")
+        grade = st.number_input(t["grade"], 1, 11, 8)
     with col_p2:
-        quarters_count = st.selectbox("📅 " + ("Четвертей:" if lang=="ru" else "Тоқсан саны:"), [1, 2, 3, 4], index=0)
-        hours_per_week = st.number_input("⏰ " + ("Часов в неделю:" if lang=="ru" else "Аптасына сағат:"), 1, 5, 2)
+        quarters_count = st.selectbox(t["quarters"], [1, 2, 3, 4], index=0)
+        hours_per_week = st.number_input(t["hours"], 1, 5, 2)
     quarters_weeks = {q: st.number_input(f"{q}-я четверть (недель):" if lang=="ru" else f"{q}-ші тоқсан (апта):", 1, 15, 8) for q in range(1, quarters_count + 1)}
     total_all_lessons = sum(q_w * hours_per_week for q_w in quarters_weeks.values())
-    st.info(f"💡 Всего уроков / Барлық сағат: **{total_all_lessons}**")
+    st.info(f"💡 {t['total_lessons']} **{total_all_lessons}**")
 
-    source_type = st.radio("Источник / Дереккөз:", ["Загрузить PDF" if lang=="ru" else "PDF жүктеу", "Текст" if lang=="ru" else "Мәтін"], horizontal=True)
+    source_type = st.radio(t["source_pdf_text"], t["pdf_opt"], horizontal=True)
     uploaded_pdf, textbook_content = None, ""
-    if "PDF" in source_type: uploaded_pdf = st.file_uploader("📂 PDF:", type=["pdf"])
-    else: textbook_content = st.text_area("📝 " + ("Темы:" if lang=="ru" else "Тақырыптар:"), "1. Инфо 2. Алгоритмы", height=100)
+    if "PDF" in source_type or "PDF" in source_type: uploaded_pdf = st.file_uploader("📂 PDF:", type=["pdf"])
+    else: textbook_content = st.text_area(t["topics_lbl"], "1. Инфо 2. Алгоритмы", height=100)
 
-    if st.button("🚀 " + ("Сгенерировать КТП в Word" if lang=="ru" else "Word форматында КТП құру"), type="primary", use_container_width=True):
-        if not active_key: st.warning(translations[lang]["no_key"])
+    if st.button("🚀 " + t["gen_ktp"], type="primary", use_container_width=True):
+        if not active_key: st.warning(t["no_key"])
         else:
             try:
-                with st.spinner("⏳ " + ("ИИ анализирует учебные материалы и формирует КТП..." if lang=="ru" else "ЖИ оқу материалдарын талдап, КТП құруда...")):
+                with st.spinner("⏳ " + t["wait_ktp"]):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
-                    prompt = f"{translations[lang]['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
+                    prompt = f"{t['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
                     response = model.generate_content([prompt, uploaded_pdf] if uploaded_pdf else prompt)
                     match = re.search(r'\[.*\]', response.text, re.DOTALL)
                     ktp_data = json.loads(match.group(0) if match else response.text)
@@ -267,14 +439,13 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
                     df_ktp = pd.DataFrame(ktp_data)
                     st.dataframe(df_ktp, use_container_width=True)
 
-                    # Создаем документ Word для КТП
                     doc_ktp = Document()
                     section = doc_ktp.sections[-1]
                     section.orientation = WD_ORIENT.LANDSCAPE
                     section.page_width, section.page_height = section.page_height, section.page_width
 
                     title = doc_ktp.add_paragraph()
-                    r = title.add_run(f"КАЛЕНДАРНО-ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ (КТП)\nПредмет: {subject}, Класс: {grade}")
+                    r = title.add_run("КАЛЕНДАРНО-ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ (КТП)\n" if lang=="ru" else "КҮНТІЗБЕЛІК-ТАҚЫРЫПТЫҚ ЖОСПАР (КТП)\n")
                     r.font.bold = True
                     r.font.size = Pt(14)
                     r.font.name = 'Times New Roman'
@@ -282,10 +453,9 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
 
                     doc_ktp.add_paragraph()
 
-                    # Таблица КТП
                     table = doc_ktp.add_table(rows=1, cols=5)
                     table.style = 'Table Grid'
-                    headers = ["Тоқсан / Четверть", "№", "Тақырып / Тема урока", "Оқыту мақсаттары / Цели обучения", "Үй тапсырмасы / ДЗ"]
+                    headers = ["Четверть / Тоқсан", "№", "Тема урока / Сабақ тақырыбы", "Цели обучения / Оқыту мақсаттары", "ДЗ / Үй жұмысы"]
                     for i, h in enumerate(headers):
                         table.rows[0].cells[i].text = h
 
@@ -301,33 +471,33 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
                     doc_ktp.save(bio)
                     bio.seek(0)
                     
-                    st.success("🎉 Готово!" if lang=="ru" else "🎉 Дайын!")
-                    st.download_button("📄 " + ("Скачать КТП (Word)" if lang=="ru" else "КТП жүктеу (Word)"), bio, f"КТП_{subject}_{grade}класс.docx", use_container_width=True)
+                    st.success("🎉 " + t["done"])
+                    st.download_button("📄 " + t["download_ktp"], bio, f"КТП_{subject}.docx", use_container_width=True)
             except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
 # МОДУЛЬ 3: AI-КОНСТРУКТОР КСП
 # ==========================================
 elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КСП) AI-Конструкторы"]:
-    st.title("📋 AI-Конструктор КСП (ҚМЖ)")
+    st.title("📋 " + menu_choice)
     st.divider()
     col_k1, col_k2 = st.columns(2)
     with col_k1:
-        teacher_name = st.text_input("ФИО учителя / Мұғалім:", "Иванов И.И.")
-        subject_ksp = st.text_input("Предмет / Пән:", "Информатика")
-        grade_ksp = st.number_input("Класс / Сынып:", 1, 11, 8)
+        teacher_name = st.text_input(t["teacher_name"], "Иванов И.И.")
+        subject_ksp = st.text_input(t["subject"], "Информатика")
+        grade_ksp = st.number_input(t["grade"], 1, 11, 8)
     with col_k2:
-        topic_ksp = st.text_input("Тема / Тақырып:", "Двоичная система")
-        target_ksp = st.text_input("ЦО / ОМ:", "8.1.1.1 Перевод чисел")
+        topic_ksp = st.text_input(t["topic_lbl"], "Двоичная система")
+        target_ksp = st.text_input(t["target_lbl"], "8.1.1.1 Перевод чисел")
 
-    if st.button("🚀 " + ("Сгенерировать КСП" if lang=="ru" else "ҚМЖ құру"), type="primary", use_container_width=True):
-        if not active_key: st.warning(translations[lang]["no_key"])
+    if st.button("🚀 " + t["gen_ksp"], type="primary", use_container_width=True):
+        if not active_key: st.warning(t["no_key"])
         else:
             try:
-                with st.spinner("⏳ " + ("Создание КСП..." if lang=="ru" else "ҚМЖ жасалуда...")):
+                with st.spinner("⏳ " + t["wait_ksp"]):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
-                    prompt = f"{translations[lang]['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON: {{\"lesson_targets\":\"...\", \"eval_criteria\":\"...\", \"stages\":[{{\"time\":\"Начало\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
+                    prompt = f"{t['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON: {{\"lesson_targets\":\"...\", \"eval_criteria\":\"...\", \"stages\":[{{\"time\":\"Начало\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
                     response = model.generate_content(prompt)
                     match = re.search(r'\{.*\}', response.text, re.DOTALL)
                     ksp_data = json.loads(match.group(0) if match else response.text)
@@ -346,7 +516,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                     t_table = doc_ksp.add_table(rows=7, cols=2)
                     t_table.style = 'Table Grid'
-                    info = [("Мұғалім:", teacher_name), ("Пән:", subject_ksp), ("Сынып:", str(grade_ksp)), ("Тақырып:", topic_ksp), ("ОМ:", target_ksp), ("Максат:", ksp_data.get("lesson_targets","")), ("Критерии / Критерий:", ksp_data.get("eval_criteria",""))]
+                    info = [("Мұғалім / Учитель:", teacher_name), ("Пән / Предмет:", subject_ksp), ("Сынып / Класс:", str(grade_ksp)), ("Тақырып / Тема:", topic_ksp), ("ОМ / ЦО:", target_ksp), ("Мақсат / Цели:", ksp_data.get("lesson_targets","")), ("Критерий:", ksp_data.get("eval_criteria",""))]
                     for idx, (l, v) in enumerate(info):
                         t_table.rows[idx].cells[0].text = l
                         t_table.rows[idx].cells[1].text = str(v)
@@ -354,7 +524,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                     doc_ksp.add_paragraph()
                     s_table = doc_ksp.add_table(rows=1, cols=5)
                     s_table.style = 'Table Grid'
-                    headers = ["Этап / Кезең", "Действия учителя / Мұғалім әрекеті", "Действия ученика / Оқушы әрекеті", "Оценивание / Бағалау", "Ресурсы / Ресурстар"]
+                    headers = ["Этап / Кезең", "Действия учителя", "Действия ученика", "Оценивание", "Ресурсы"]
                     for i, h in enumerate(headers): s_table.rows[0].cells[i].text = h
 
                     for stg in ksp_data.get("stages", []):
@@ -364,83 +534,105 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                     bio = io.BytesIO()
                     doc_ksp.save(bio)
                     bio.seek(0)
-                    st.success("Готово!" if lang=="ru" else "Дайын!")
-                    st.download_button("📄 Скачать КСП (Word)", bio, f"ҚМЖ_{topic_ksp}.docx", use_container_width=True)
+                    st.success("🎉 " + t["done"])
+                    st.download_button("📄 " + t["download_ksp"], bio, f"ҚМЖ_{topic_ksp}.docx", use_container_width=True)
             except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
 # МОДУЛЬ 4: EDA
 # ==========================================
 elif menu_choice in ["📊 Анализ и визуализация (EDA)", "📊 Талдау және визуализация (EDA)"]:
-    st.title("📊 " + ("Анализ и визуализация успеваемости" if lang=="ru" else "Үлгерімді талдау және визуализация"))
+    st.title("📊 " + menu_choice)
+    st.markdown("#### " + t["eda_sub"])
     st.divider()
-    uploaded_eda = st.file_uploader("📂 Excel (.xlsx)", type=["xlsx"])
+    uploaded_eda = st.file_uploader("📂 " + t["eda_load"], type=["xlsx"])
     if uploaded_eda:
         df_eda = pd.read_excel(uploaded_eda)
         st.write(df_eda.head())
         num_cols = df_eda.select_dtypes(include=['number']).columns.tolist()
         if num_cols:
-            col = st.selectbox("Колонка / Баған:", num_cols)
-            if st.button("📈 " + ("Построить график" if lang=="ru" else "График құру"), type="primary"):
-                with st.spinner("⏳ " + ("Анализ данных..." if lang=="ru" else "Деректерді талдау...")):
+            col = st.selectbox(t["eda_select"], num_cols)
+            if st.button("📈 " + t["eda_btn"], type="primary"):
+                with st.spinner("⏳ " + t["eda_wait"]):
                     st.write(df_eda[col].describe())
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sns.histplot(df_eda[col], kde=True, ax=ax, color='purple')
-                    st.pyplot(fig)
+                    col_g1, col_g2 = st.columns(2)
+                    with col_g1:
+                        st.markdown(f"##### {t['hist']}")
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        sns.histplot(df_eda[col], kde=True, ax=ax, color='purple')
+                        st.pyplot(fig)
+                    with col_g2:
+                        st.markdown(f"##### {t['box']}")
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        sns.boxplot(y=df_eda[col], ax=ax, color='skyblue')
+                        st.pyplot(fig)
 
 # ==========================================
 # МОДУЛЬ 5: ML
 # ==========================================
 elif menu_choice in ["🤖 ML-Прогноз уровня ученика", "🤖 Оқушы деңгейін ML болжау"]:
-    st.title("🤖 " + ("ML-Прогноз уровня ученика" if lang=="ru" else "Оқушы деңгейін ML болжау"))
+    st.title("🤖 " + menu_choice)
+    st.markdown("#### " + t["ml_sub"])
     st.divider()
-    att = st.slider("Посещаемость / Қатысу (%):", 50, 100, 85)
-    hw = st.slider("ДЗ / Үй жұмысы (%):", 0, 100, 75)
-    test = st.slider("Тест балл:", 0, 100, 80)
-    if st.button("🔮 " + ("Предсказать" if lang=="ru" else "Болжау"), type="primary"):
-        with st.spinner("⏳ ML-модель..."):
-            X_train = [[60, 50, 55], [90, 85, 88], [70, 60, 65], [95, 95, 92]]
-            y_train = ["Қолдау тобы / Группа поддержки", "Жоғары / Продвинутый", "Орташа / Стандартный", "Жоғары / Продвинутый"]
-            model = RandomForestClassifier().fit(X_train, y_train)
-            pred = model.predict([[att, hw, test]])[0]
-        st.success(f"🎯 Нәтиже / Результат: **{pred}**")
+    st.write(t["ml_txt"])
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        att = st.slider(t["att"], 50, 100, 85)
+        hw = st.slider(t["hw"], 0, 100, 75)
+    with col_m2:
+        test = st.slider(t["test"], 0, 100, 80)
+        activity = st.selectbox(t["activity"], t["act_opts"])
+        act_val = 1 if activity in ["Низкая", "Төмен"] else (2 if activity in ["Средняя", "Орташа"] else 3)
+
+    if st.button("🔮 " + t["ml_btn"], type="primary", use_container_width=True):
+        with st.spinner("⏳ " + t["ml_wait"]):
+            X_train = [[60, 50, 55, 1], [90, 85, 88, 3], [70, 60, 65, 2], [95, 95, 92, 3]]
+            y_train = ["Группа поддержки" if lang=="ru" else "Қолдау тобы", "Продвинутый" if lang=="ru" else "Жоғары", "Стандартный" if lang=="ru" else "Стандартты", "Продвинутый" if lang=="ru" else "Жоғары"]
+            model = RandomForestClassifier(random_state=42).fit(X_train, y_train)
+            pred = model.predict([[att, hw, test, act_val]])[0]
+        st.success(f"🎯 {t['rec']} **{pred}**")
 
 # ==========================================
 # МОДУЛЬ 6: AI-ПРОВЕРКА ПО ФОТО
 # ==========================================
 elif menu_choice in ["📷 AI-Проверка по фото", "📷 Фото арқылы AI тексеру"]:
-    st.title("📷 " + ("AI-Проверка работ" if lang=="ru" else "Жұмыстарды AI тексеру"))
+    st.title("📷 " + menu_choice)
     st.divider()
-    img = st.file_uploader("Фото:", type=["jpg", "png"])
-    if img and st.button("Тексеру / Проверить", type="primary"):
-        if not active_key: st.warning(translations[lang]["no_key"])
+    img = st.file_uploader("📂 " + t["photo_load"], type=["jpg", "png"])
+    if img and st.button(t["photo_check"], type="primary"):
+        if not active_key: st.warning(t["no_key"])
         else:
-            with st.spinner("⏳ " + ("ИИ проверяет работу..." if lang=="ru" else "ЖИ жұмысты тексеруде...")):
+            with st.spinner("⏳ " + t["photo_wait"]):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                res = model.generate_content([f"{translations[lang]['ai_lang_prompt']} Проверь работу ученика:", Image.open(img)])
+                res = model.generate_content([f"{t['ai_lang_prompt']} Проверь работу ученика:", Image.open(img)])
                 st.markdown(res.text)
 
 # ==========================================
 # МОДУЛЬ 7: ХАРАКТЕРИСТИКА
 # ==========================================
 elif menu_choice in ["👤 Генератор характеристик", "👤 Мінездеме генераторы"]:
-    st.title("👤 " + ("Генератор характеристик" if lang=="ru" else "Мінездеме генераторы"))
+    st.title("👤 " + menu_choice)
+    st.markdown("#### " + t["char_sub"])
     st.divider()
-    name = st.text_input("Аты-жөні / ФИО:", "Иванов Иван")
-    cls = st.text_input("Сынып / Класс:", "8 «А»")
-    att = st.slider("Сабаққа қатысу / Посещаемость (%):", 0, 100, 90)
-    perf = st.selectbox("Үлгерім / Успеваемость:", ["Үздік / Отличник", "Екпінді / Ударник", "Орташа / Средняя"])
-    beh = st.selectbox("Тәртіп / Поведение:", ["Үлгілі / Примерное", "Жақсы / Хорошее"])
-    traits = st.text_area("Қосымша / Дополнительно:", "Олимпиада қатысушысы...")
+    col_h1, col_h2 = st.columns(2)
+    with col_h1:
+        name = st.text_input(t["name_lbl"], "Иванов Иван")
+        cls = st.text_input(t["cls_lbl"], "8 «А»")
+        att = st.slider(t["att_lbl"], 0, 100, 90)
+    with col_h2:
+        perf = st.selectbox(t["perf_lbl"], t["perf_opts"])
+        beh = st.selectbox(t["beh_lbl"], t["beh_opts"])
 
-    if st.button("🚀 " + ("Сгенерировать" if lang=="ru" else "Жасау"), type="primary"):
-        if not active_key: st.warning(translations[lang]["no_key"])
+    traits = st.text_area(t["traits_lbl"], "...")
+
+    if st.button("🚀 " + t["char_btn"], type="primary", use_container_width=True):
+        if not active_key: st.warning(t["no_key"])
         else:
-            with st.spinner("⏳ " + ("Создание характеристики..." if lang=="ru" else "Мінездеме жазылуда...")):
+            with st.spinner("⏳ " + t["char_wait"]):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                prompt = f"{translations[lang]['ai_lang_prompt']} Напиши официальную характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}."
+                prompt = f"{t['ai_lang_prompt']} Напиши официальную характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}."
                 res = model.generate_content(prompt)
                 st.markdown(res.text)
 
@@ -448,17 +640,22 @@ elif menu_choice in ["👤 Генератор характеристик", "👤
 # МОДУЛЬ 8: РАЗМИНКИ
 # ==========================================
 elif menu_choice in ["⚡ Разминки и интерактивы", "⚡ Сергіту сәттері мен интерактив"]:
-    st.title("⚡ " + ("AI-Разминки" if lang=="ru" else "AI Сергіту сәттері"))
+    st.title("⚡ " + menu_choice)
+    st.markdown("#### " + t["warm_sub"])
     st.divider()
-    top = st.text_input("Тақырып / Тема:", "Алгоритмдер")
-    tm = st.slider("Уақыт / Время (мин):", 2, 10, 5)
-    if st.button("Таңдау / Подобрать", type="primary"):
-        if not active_key: st.warning(translations[lang]["no_key"])
+    col_w1, col_w2 = st.columns(2)
+    with col_w1:
+        top = st.text_input(t["warm_top"], "Алгоритмы")
+    with col_w2:
+        tm = st.slider(t["warm_time"], 2, 10, 5)
+
+    if st.button("🚀 " + t["warm_btn"], type="primary", use_container_width=True):
+        if not active_key: st.warning(t["no_key"])
         else:
-            with st.spinner("⏳ " + ("Подбор разминок..." if lang=="ru" else "Сергіту сәттері таңдалуда...")):
+            with st.spinner("⏳ " + t["warm_wait"]):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                prompt = f"{translations[lang]['ai_lang_prompt']} Предложи 3 разминки на тему {top} на {tm} минут."
+                prompt = f"{t['ai_lang_prompt']} Предложи 3 разминки на тему {top} на {tm} минут."
                 res = model.generate_content(prompt)
                 st.markdown(res.text)
 
