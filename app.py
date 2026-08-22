@@ -10,39 +10,14 @@ import google.generativeai as genai
 from PIL import Image
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-import streamlit.components.v1 as components
 
 # ==========================================
-# 📊 GOOGLE ANALYTICS СЧЕТЧИК
-# ==========================================
-# Замените "G-XXXXXXXXXX" на ваш реальный Measurement ID из Google Analytics
-GA_TRACKING_ID = "G-0EW4TYEDKE" 
-
-ga_component = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){{dataLayer.push(arguments);}}
-      gtag('js', new Date());
-      gtag('config', '{GA_TRACKING_ID}');
-    </script>
-</head>
-<body>
-</body>
-</html>
-"""
-components.html(ga_component, height=0, width=0)
-
-# ==========================================
-# 0. СЛОВАРЬ ПЕРЕВОДОВ (РУССКИЙ / ҚАЗАҚША)
+# 0. СЛОВАРЬ ПЕРЕВОДОВ ИНТЕРФЕЙСА
 # ==========================================
 translations = {
     "ru": {
@@ -64,6 +39,7 @@ translations = {
             "⚡ Разминки и интерактивы",
         ],
         "no_key": "Пожалуйста, введите ваш рабочий Gemini API Key в боковом меню слева!",
+        "ai_lang_prompt": "Напиши ответ строго на русском языке."
     },
     "kk": {
         "page_title": "AI Мұғалім Көмекшісі",
@@ -84,6 +60,7 @@ translations = {
             "⚡ Сергіту сәттері мен интерактив",
         ],
         "no_key": "Сол жақ бүйірлік мәзірге жұмыс істейтін Gemini API Key енгізіңіз!",
+        "ai_lang_prompt": "Жауапты қатаң түрде қазақ тілінде жаз."
     }
 }
 
@@ -114,7 +91,6 @@ DEFAULT_API_KEY = ""
 # ==========================================
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/1972/1972413.png", width=80)
 
-# Переключатель языка
 lang_choice = st.sidebar.selectbox("🌐 Тіл / Язык:", ["Русский", "Қазақша"], index=0)
 lang = "ru" if lang_choice == "Русский" else "kk"
 
@@ -155,7 +131,7 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
     st.markdown("#### " + ("Автоматическая генерация индивидуальных вариантов в Word" if lang=="ru" else "Word форматында жеке нұсқаларды автоматты түрде жасау"))
     st.divider()
 
-    source_type = st.radio("Источник данных / Дереккөз:" if lang=="ru" else "Дереккөз:", ["Google Таблица (ссылка)" if lang=="ru" else "Google Кесте (сілтеме)", "Excel-файл (.xlsx)"], horizontal=True)
+    source_type = st.radio("Дереккөз / Источник:" if lang=="kk" else "Источник данных:", ["Google Таблица (ссылка)" if lang=="ru" else "Google Кесте (сілтеме)", "Excel-файл (.xlsx)"], horizontal=True)
     df_questions, df_students = None, None
 
     if "Google" in source_type:
@@ -195,13 +171,13 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
             if not active_key: st.warning(translations[lang]["no_key"])
             else:
                 try:
-                    with st.spinner("⏳ ИИ формирует варианты..."):
+                    with st.spinner("⏳ " + ("ИИ обрабатывает банк вопросов..." if lang=="ru" else "ЖИ сұрақтар банкін өңдеуде...")):
                         df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
                         df_students.columns = df_students.columns.astype(str).str.strip().str.lower()
                         rename_dict = {}
                         for col in df_questions.columns:
                             if "сложн" in col or "күрдел" in col: rename_dict[col] = "сложность"
-                            elif "тем" in col: rename_dict[col] = "тема"
+                            elif "тем" in col or "тақырып" in col: rename_dict[col] = "тема"
                             elif "вопрос" in col or "сұрақ" in col: rename_dict[col] = "вопрос"
                             elif "ответ" in col or "жауап" in col: rename_dict[col] = "ответ"
                         df_questions = df_questions.rename(columns=rename_dict)
@@ -220,13 +196,13 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                                 if len(subset) == 0: subset = df_questions
                                 variant_questions.append(subset.sample(n=min(count, len(subset))))
                         student_variant = pd.concat(variant_questions).reset_index(drop=True)
-                        title = doc_students.add_heading("Проверочная работа", level=2)
+                        title = doc_students.add_heading("Проверочная работа" if lang=="ru" else "Бақылау жұмысы", level=2)
                         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         p_info = doc_students.add_paragraph()
                         p_info.add_run(f"Ученик(ца) / Оқушы: {student}").bold = True
                         for idx, row in student_variant.iterrows():
                             p_q = doc_students.add_paragraph()
-                            p_q.add_run(f"Задание {idx + 1} ").bold = True
+                            p_q.add_run(f"Задание {idx + 1} / {idx+1}-тапсырма: ").bold = True
                             p_q.add_run(f"{row['вопрос']}\n")
                             p_q.add_run("Ответ / Жауап: ____________________")
                             teacher_keys.append({"Ученик": student, "№ Задания": idx + 1, "Ответ": row["ответ"]})
@@ -236,7 +212,7 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                     doc_students.save(bio_students)
                     bio_students.seek(0)
                     doc_teacher = Document()
-                    doc_teacher.add_heading("КЛЮЧИ (ДЛЯ УЧИТЕЛЯ)", level=1)
+                    doc_teacher.add_heading("КЛЮЧИ (ДЛЯ УЧИТЕЛЯ) / ЖАУАПТАР", level=1)
                     df_keys = pd.DataFrame(teacher_keys)
                     curr_st = ""
                     for _, row in df_keys.iterrows():
@@ -251,11 +227,11 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                     st.success("🎉 Готово!" if lang=="ru" else "🎉 Дайын!")
                     col_d1, col_d2 = st.columns(2)
                     with col_d1: st.download_button("📄 " + ("Скачать Карточки" if lang=="ru" else "Карточкаларды жүктеу"), bio_students, "Карточки.docx", use_container_width=True)
-                    with col_d2: st.download_button("🔑 " + ("Скачать Ключи" if lang=="ru" else "Клттерді жүктеу"), bio_teacher, "Ключи.docx", use_container_width=True)
+                    with col_d2: st.download_button("🔑 " + ("Скачать Ключи" if lang=="ru" else "Жауаптарды жүктеу"), bio_teacher, "Ключи.docx", use_container_width=True)
                 except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
-# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП
+# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП (ИЗМЕНЕН НА WORD)
 # ==========================================
 elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Генераторы"]:
     st.title("📅 AI-Генератор КТП")
@@ -276,23 +252,57 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
     if "PDF" in source_type: uploaded_pdf = st.file_uploader("📂 PDF:", type=["pdf"])
     else: textbook_content = st.text_area("📝 " + ("Темы:" if lang=="ru" else "Тақырыптар:"), "1. Инфо 2. Алгоритмы", height=100)
 
-    if st.button("🚀 " + ("Сгенерировать КТП" if lang=="ru" else "КТП құру"), type="primary", use_container_width=True):
+    if st.button("🚀 " + ("Сгенерировать КТП в Word" if lang=="ru" else "Word форматында КТП құру"), type="primary", use_container_width=True):
         if not active_key: st.warning(translations[lang]["no_key"])
         else:
             try:
-                with st.spinner("⏳ ИИ анализирует..."):
+                with st.spinner("⏳ " + ("ИИ анализирует учебные материалы и формирует КТП..." if lang=="ru" else "ЖИ оқу материалдарын талдап, КТП құруда...")):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
-                    prompt = f"Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
+                    prompt = f"{translations[lang]['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
                     response = model.generate_content([prompt, uploaded_pdf] if uploaded_pdf else prompt)
                     match = re.search(r'\[.*\]', response.text, re.DOTALL)
                     ktp_data = json.loads(match.group(0) if match else response.text)
+                    
                     df_ktp = pd.DataFrame(ktp_data)
                     st.dataframe(df_ktp, use_container_width=True)
+
+                    # Создаем документ Word для КТП
+                    doc_ktp = Document()
+                    section = doc_ktp.sections[-1]
+                    section.orientation = WD_ORIENT.LANDSCAPE
+                    section.page_width, section.page_height = section.page_height, section.page_width
+
+                    title = doc_ktp.add_paragraph()
+                    r = title.add_run(f"КАЛЕНДАРНО-ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ (КТП)\nПредмет: {subject}, Класс: {grade}")
+                    r.font.bold = True
+                    r.font.size = Pt(14)
+                    r.font.name = 'Times New Roman'
+                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                    doc_ktp.add_paragraph()
+
+                    # Таблица КТП
+                    table = doc_ktp.add_table(rows=1, cols=5)
+                    table.style = 'Table Grid'
+                    headers = ["Тоқсан / Четверть", "№", "Тақырып / Тема урока", "Оқыту мақсаттары / Цели обучения", "Үй тапсырмасы / ДЗ"]
+                    for i, h in enumerate(headers):
+                        table.rows[0].cells[i].text = h
+
+                    for item in ktp_data:
+                        row_cells = table.add_row().cells
+                        row_cells[0].text = str(item.get("quarter", ""))
+                        row_cells[1].text = str(item.get("lesson_num", ""))
+                        row_cells[2].text = str(item.get("topic", ""))
+                        row_cells[3].text = str(item.get("targets", ""))
+                        row_cells[4].text = str(item.get("homework", ""))
+
                     bio = io.BytesIO()
-                    with pd.ExcelWriter(bio, engine="openpyxl") as w: df_ktp.to_excel(w, index=False)
+                    doc_ktp.save(bio)
                     bio.seek(0)
-                    st.download_button("📊 Скачать КТП (Excel)", bio, f"КТП_{subject}.xlsx", use_container_width=True)
+                    
+                    st.success("🎉 Готово!" if lang=="ru" else "🎉 Дайын!")
+                    st.download_button("📄 " + ("Скачать КТП (Word)" if lang=="ru" else "КТП жүктеу (Word)"), bio, f"КТП_{subject}_{grade}класс.docx", use_container_width=True)
             except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
@@ -314,10 +324,10 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
         if not active_key: st.warning(translations[lang]["no_key"])
         else:
             try:
-                with st.spinner("⏳ Создание КСП..."):
+                with st.spinner("⏳ " + ("Создание КСП..." if lang=="ru" else "ҚМЖ жасалуда...")):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
-                    prompt = f"Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON: {{\"lesson_targets\":\"...\", \"eval_criteria\":\"...\", \"stages\":[{{\"time\":\"Начало\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
+                    prompt = f"{translations[lang]['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON: {{\"lesson_targets\":\"...\", \"eval_criteria\":\"...\", \"stages\":[{{\"time\":\"Начало\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
                     response = model.generate_content(prompt)
                     match = re.search(r'\{.*\}', response.text, re.DOTALL)
                     ksp_data = json.loads(match.group(0) if match else response.text)
@@ -336,7 +346,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                     t_table = doc_ksp.add_table(rows=7, cols=2)
                     t_table.style = 'Table Grid'
-                    info = [("Мұғалім:", teacher_name), ("Пән:", subject_ksp), ("Сынып:", str(grade_ksp)), ("Тақырып:", topic_ksp), ("ОМ:", target_ksp), ("Максат:", ksp_data.get("lesson_targets","")), ("Критерий:", ksp_data.get("eval_criteria",""))]
+                    info = [("Мұғалім:", teacher_name), ("Пән:", subject_ksp), ("Сынып:", str(grade_ksp)), ("Тақырып:", topic_ksp), ("ОМ:", target_ksp), ("Максат:", ksp_data.get("lesson_targets","")), ("Критерии / Критерий:", ksp_data.get("eval_criteria",""))]
                     for idx, (l, v) in enumerate(info):
                         t_table.rows[idx].cells[0].text = l
                         t_table.rows[idx].cells[1].text = str(v)
@@ -344,7 +354,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                     doc_ksp.add_paragraph()
                     s_table = doc_ksp.add_table(rows=1, cols=5)
                     s_table.style = 'Table Grid'
-                    headers = ["Кезені", "Мұғалім әрекеті", "Оқушы әрекеті", "Бағалау", "Ресурстар"]
+                    headers = ["Этап / Кезең", "Действия учителя / Мұғалім әрекеті", "Действия ученика / Оқушы әрекеті", "Оценивание / Бағалау", "Ресурсы / Ресурстар"]
                     for i, h in enumerate(headers): s_table.rows[0].cells[i].text = h
 
                     for stg in ksp_data.get("stages", []):
@@ -354,7 +364,7 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                     bio = io.BytesIO()
                     doc_ksp.save(bio)
                     bio.seek(0)
-                    st.success("Готово!")
+                    st.success("Готово!" if lang=="ru" else "Дайын!")
                     st.download_button("📄 Скачать КСП (Word)", bio, f"ҚМЖ_{topic_ksp}.docx", use_container_width=True)
             except Exception as e: st.error(f"Ошибка: {e}")
 
@@ -370,9 +380,9 @@ elif menu_choice in ["📊 Анализ и визуализация (EDA)", "�
         st.write(df_eda.head())
         num_cols = df_eda.select_dtypes(include=['number']).columns.tolist()
         if num_cols:
-            col = st.selectbox("Колонка:", num_cols)
-            if st.button("📈 График", type="primary"):
-                with st.spinner("⏳ Анализ..."):
+            col = st.selectbox("Колонка / Баған:", num_cols)
+            if st.button("📈 " + ("Построить график" if lang=="ru" else "График құру"), type="primary"):
+                with st.spinner("⏳ " + ("Анализ данных..." if lang=="ru" else "Деректерді талдау...")):
                     st.write(df_eda[col].describe())
                     fig, ax = plt.subplots(figsize=(6, 4))
                     sns.histplot(df_eda[col], kde=True, ax=ax, color='purple')
@@ -384,14 +394,15 @@ elif menu_choice in ["📊 Анализ и визуализация (EDA)", "�
 elif menu_choice in ["🤖 ML-Прогноз уровня ученика", "🤖 Оқушы деңгейін ML болжау"]:
     st.title("🤖 " + ("ML-Прогноз уровня ученика" if lang=="ru" else "Оқушы деңгейін ML болжау"))
     st.divider()
-    att = st.slider("Посещаемость (%):", 50, 100, 85)
-    hw = st.slider("ДЗ (%):", 0, 100, 75)
+    att = st.slider("Посещаемость / Қатысу (%):", 50, 100, 85)
+    hw = st.slider("ДЗ / Үй жұмысы (%):", 0, 100, 75)
     test = st.slider("Тест балл:", 0, 100, 80)
-    if st.button("🔮 Болжау", type="primary"):
-        X_train = [[60, 50, 55], [90, 85, 88], [70, 60, 65], [95, 95, 92]]
-        y_train = ["Қолдау", "Жоғары", "Орташа", "Жоғары"]
-        model = RandomForestClassifier().fit(X_train, y_train)
-        pred = model.predict([[att, hw, test]])[0]
+    if st.button("🔮 " + ("Предсказать" if lang=="ru" else "Болжау"), type="primary"):
+        with st.spinner("⏳ ML-модель..."):
+            X_train = [[60, 50, 55], [90, 85, 88], [70, 60, 65], [95, 95, 92]]
+            y_train = ["Қолдау тобы / Группа поддержки", "Жоғары / Продвинутый", "Орташа / Стандартный", "Жоғары / Продвинутый"]
+            model = RandomForestClassifier().fit(X_train, y_train)
+            pred = model.predict([[att, hw, test]])[0]
         st.success(f"🎯 Нәтиже / Результат: **{pred}**")
 
 # ==========================================
@@ -401,13 +412,13 @@ elif menu_choice in ["📷 AI-Проверка по фото", "📷 Фото а
     st.title("📷 " + ("AI-Проверка работ" if lang=="ru" else "Жұмыстарды AI тексеру"))
     st.divider()
     img = st.file_uploader("Фото:", type=["jpg", "png"])
-    if img and st.button("Тексеру", type="primary"):
+    if img and st.button("Тексеру / Проверить", type="primary"):
         if not active_key: st.warning(translations[lang]["no_key"])
         else:
-            with st.spinner("⏳ Тексеруде..."):
+            with st.spinner("⏳ " + ("ИИ проверяет работу..." if lang=="ru" else "ЖИ жұмысты тексеруде...")):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                res = model.generate_content(["Проверь работу ученика:", Image.open(img)])
+                res = model.generate_content([f"{translations[lang]['ai_lang_prompt']} Проверь работу ученика:", Image.open(img)])
                 st.markdown(res.text)
 
 # ==========================================
@@ -423,13 +434,14 @@ elif menu_choice in ["👤 Генератор характеристик", "👤
     beh = st.selectbox("Тәртіп / Поведение:", ["Үлгілі / Примерное", "Жақсы / Хорошее"])
     traits = st.text_area("Қосымша / Дополнительно:", "Олимпиада қатысушысы...")
 
-    if st.button("🚀 Жасау", type="primary"):
+    if st.button("🚀 " + ("Сгенерировать" if lang=="ru" else "Жасау"), type="primary"):
         if not active_key: st.warning(translations[lang]["no_key"])
         else:
-            with st.spinner("⏳ Жасалуда..."):
+            with st.spinner("⏳ " + ("Создание характеристики..." if lang=="ru" else "Мінездеме жазылуда...")):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                res = model.generate_content(f"Напиши характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}.")
+                prompt = f"{translations[lang]['ai_lang_prompt']} Напиши официальную характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}."
+                res = model.generate_content(prompt)
                 st.markdown(res.text)
 
 # ==========================================
@@ -440,11 +452,34 @@ elif menu_choice in ["⚡ Разминки и интерактивы", "⚡ Се
     st.divider()
     top = st.text_input("Тақырып / Тема:", "Алгоритмдер")
     tm = st.slider("Уақыт / Время (мин):", 2, 10, 5)
-    if st.button("Таңдау", type="primary"):
+    if st.button("Таңдау / Подобрать", type="primary"):
         if not active_key: st.warning(translations[lang]["no_key"])
         else:
-            with st.spinner("⏳ Дайындалуда..."):
+            with st.spinner("⏳ " + ("Подбор разминок..." if lang=="ru" else "Сергіту сәттері таңдалуда...")):
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
-                res = model.generate_content(f"Предложи 3 разминки на тему {top} на {tm} минут.")
+                prompt = f"{translations[lang]['ai_lang_prompt']} Предложи 3 разминки на тему {top} на {tm} минут."
+                res = model.generate_content(prompt)
                 st.markdown(res.text)
+
+# ==========================================
+# 📊 GOOGLE ANALYTICS СЧЕТЧИК
+# ==========================================
+GA_TRACKING_ID = "G-0EW4TYEDKE" 
+ga_component = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){{dataLayer.push(arguments);}}
+      gtag('js', new Date());
+      gtag('config', '{GA_TRACKING_ID}');
+    </script>
+</head>
+<body>
+</body>
+</html>
+"""
+components.html(ga_component, height=0, width=0)
