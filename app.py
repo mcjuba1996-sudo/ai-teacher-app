@@ -29,7 +29,7 @@ def track_event(action, category, label):
     """, height=0, width=0)
 # ==========================================
 # Google Analytics (замените G-XXXXXXXXXX на ваш ID!)
-GA_ID = "G-G-0EW4TYEDKE" 
+GA_ID = "G-0EW4TYEDKE" 
 components.html(f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
     <script>
