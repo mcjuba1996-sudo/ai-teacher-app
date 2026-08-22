@@ -14,6 +14,32 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
+import streamlit.components.v1 as components
+
+# ==========================================
+# 📊 GOOGLE ANALYTICS СЧЕТЧИК
+# ==========================================
+# Замените "G-XXXXXXXXXX" на ваш реальный Measurement ID из Google Analytics
+GA_TRACKING_ID = "G-0EW4TYEDKE" 
+
+ga_component = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){{dataLayer.push(arguments);}}
+      gtag('js', new Date());
+      gtag('config', '{GA_TRACKING_ID}');
+    </script>
+</head>
+<body>
+</body>
+</html>
+"""
+components.html(ga_component, height=0, width=0)
 
 # ==========================================
 # 0. СЛОВАРЬ ПЕРЕВОДОВ (РУССКИЙ / ҚАЗАҚША)
