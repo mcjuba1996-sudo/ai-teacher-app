@@ -210,12 +210,13 @@ if menu_choice == "📝 Генератор карточек":
                 except Exception as e: st.error(f"Ошибка обработки: {e}")
 
 # ==========================================
-# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП
+# МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП (ИСПРАВЛЕННЫЙ В WORD)
 # ==========================================
 elif menu_choice == "📅 AI-Генератор КТП":
     st.title("📅 AI-Генератор КТП")
-    st.markdown("#### Сформируйте КТП из PDF-учебника или текста с выгрузкой в Excel")
+    st.markdown("#### Сформируйте КТП из PDF-учебника или текста с выгрузкой в Word")
     st.divider()
+    
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         subject = st.text_input("📚 Предмет:", "Информатика")
@@ -223,6 +224,7 @@ elif menu_choice == "📅 AI-Генератор КТП":
     with col_p2:
         quarters_count = st.selectbox("📅 Количество четвертей:", [1, 2, 3, 4], index=0)
         hours_per_week = st.number_input("⏰ Часов в неделю:", 1, 5, 2)
+    
     quarters_weeks = {q: st.number_input(f"{q}-я четверть (недель):", 1, 15, 8) for q in range(1, quarters_count + 1)}
     total_all_lessons = sum(q_w * hours_per_week for q_w in quarters_weeks.values())
     st.info(f"💡 Всего уроков: **{total_all_lessons}**")
@@ -232,24 +234,40 @@ elif menu_choice == "📅 AI-Генератор КТП":
     if source_type == "Загрузить PDF-файл": uploaded_pdf = st.file_uploader("📂 PDF:", type=["pdf"])
     else: textbook_content = st.text_area("📝 Темы:", "1. Инфо 2. Двоичная система", height=100)
 
-    if st.button("🚀 Сгенерировать КТП", type="primary", use_container_width=True):
+    if st.button("🚀 Сгенерировать КТП в Word"):
         track_event('generate_ktp', 'Module_Action', 'KTP_Generator')
-        if not active_key: st.warning("Пожалуйста, введите API Key в боковом меню!")
+        if not active_key: st.warning("Введите API Key!")
         else:
             try:
-                with st.spinner("⏳ ИИ анализирует учебные материалы и формирует календарно-тематическое планирование..."):
+                with st.spinner("⏳ ИИ анализирует материалы..."):
                     genai.configure(api_key=active_key)
                     model = genai.GenerativeModel("gemini-3.6-flash")
                     prompt = f"Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{'quarter':1, 'lesson_num':1, 'topic':'', 'targets':'', 'homework':''}}]"
                     response = model.generate_content([prompt, uploaded_pdf] if uploaded_pdf else prompt)
                     match = re.search(r'\[.*\]', response.text, re.DOTALL)
                     ktp_data = json.loads(match.group(0) if match else response.text)
-                    df_ktp = pd.DataFrame(ktp_data)
-                    st.dataframe(df_ktp, use_container_width=True)
+
+                    # Генерация Word
+                    doc = Document()
+                    doc.add_heading(f"Календарно-тематическое планирование: {subject} ({grade} класс)", level=1)
+                    table = doc.add_table(rows=1, cols=5)
+                    table.style = 'Table Grid'
+                    hdr_cells = table.rows[0].cells
+                    for i, h in enumerate(["Четверть", "№", "Тема", "Цели обучения", "Д/З"]): hdr_cells[i].text = h
+                    
+                    for item in ktp_data:
+                        row = table.add_row().cells
+                        row[0].text = str(item.get('quarter', ''))
+                        row[1].text = str(item.get('lesson_num', ''))
+                        row[2].text = str(item.get('topic', ''))
+                        row[3].text = str(item.get('targets', ''))
+                        row[4].text = str(item.get('homework', ''))
+                    
                     bio = io.BytesIO()
-                    with pd.ExcelWriter(bio, engine="openpyxl") as w: df_ktp.to_excel(w, index=False)
+                    doc.save(bio)
                     bio.seek(0)
-                    st.download_button("📊 Скачать КТП (Excel)", bio, f"КТП_{subject}.xlsx", use_container_width=True)
+                    st.success("✅ КТП готово!")
+                    st.download_button("📄 Скачать КТП (Word)", bio, f"КТП_{subject}.docx", use_container_width=True)
             except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
