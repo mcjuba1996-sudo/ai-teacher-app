@@ -297,7 +297,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ⚠️ ДЕФОЛТНЫЙ КЛЮЧ (безопасно берется из секретов Streamlit, если задан)
 try:
     DEFAULT_API_KEY = st.secrets.get("DEFAULT_API_KEY", "")
 except:
@@ -332,14 +331,33 @@ st.sidebar.markdown("---")
 st.sidebar.caption(t["footer"])
 
 # ==========================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# 🛡️ УМНЫЙ ПАРСЕР JSON (Исправляет баг КСП)
 # ==========================================
 def clean_json_response(text):
+    """Надежный парсер: находит правильные границы JSON (словаря или массива)"""
     text = text.strip()
-    match = re.search(r'\[.*\]', text, re.DOTALL) if '[' in text else re.search(r'\{.*\}', text, re.DOTALL)
+    match = re.search(r'```(?:json)?(.*?)```', text, re.DOTALL)
     if match:
-        return json.loads(match.group(0))
-    return json.loads(text)
+        text = match.group(1).strip()
+        
+    try:
+        start_dict = text.find('{')
+        start_list = text.find('[')
+        
+        # Если JSON начинается со словаря {} (Как в КСП)
+        if start_dict != -1 and (start_list == -1 or start_dict < start_list):
+            end_dict = text.rfind('}')
+            if end_dict != -1:
+                return json.loads(text[start_dict:end_dict+1])
+        # Если JSON начинается с массива [] (Как в КТП и Карточках)
+        elif start_list != -1:
+            end_list = text.rfind(']')
+            if end_list != -1:
+                return json.loads(text[start_list:end_list+1])
+                
+        return json.loads(text)
+    except Exception:
+        return {}
 
 def generate_excel_template():
     output = io.BytesIO()
@@ -419,7 +437,10 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
                     model = genai.GenerativeModel("gemini-3.6-flash")
                     prompt = f"{t['ai_lang_prompt']} Сгенерируй базу из {count_easy*3} легких, {count_med*3} средних и {count_hard*3} сложных вопросов по теме '{ai_topic}'. Верни строго JSON массив: [{{'вопрос': '...', 'ответ': '...', 'сложность': 'Легкий'}}, ...]"
                     res = model.generate_content(prompt)
-                    df_questions = pd.DataFrame(clean_json_response(res.text))
+                    
+                    parsed_data = clean_json_response(res.text)
+                    if isinstance(parsed_data, dict): parsed_data = [parsed_data]
+                    df_questions = pd.DataFrame(parsed_data)
 
                 df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
                 rename_dict = {col: "сложность" if "сложн" in col or "қиын" in col else "вопрос" if "вопрос" in col or "сұрақ" in col else "ответ" if "ответ" in col or "жауап" in col else col for col in df_questions.columns}
@@ -500,7 +521,9 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
                 prompt = f"{t['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{\"quarter\":1, \"lesson_num\":1, \"section\":\"Название раздела\", \"topic\":\"Тема урока\", \"targets\":\"Цель обучения\"}}]"
                 
                 response = model.generate_content([prompt, uploaded_pdf]) if uploaded_pdf else model.generate_content(prompt)
+                
                 ktp_data = clean_json_response(response.text)
+                if isinstance(ktp_data, dict): ktp_data = [ktp_data]
 
                 doc = Document()
                 section_doc = doc.sections[-1]
@@ -547,7 +570,7 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
             except Exception as e: st.error(f"Ошибка ИИ: {e}")
 
 # ==========================================
-# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (СТРОГИЕ ПРАВИЛА ГОС. СТАНДАРТА)
+# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (АБСОЛЮТНО НОВЫЙ ГОС. СТАНДАРТ)
 # ==========================================
 elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КСП) AI-Конструкторы"]:
     st.title(menu_choice)
@@ -583,9 +606,9 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                           "]}")
                 
                 res = model.generate_content(prompt)
+                
                 ksp_data = clean_json_response(res.text)
 
-                # 🛡️ ЗАЩИТА ОТ ОШИБКИ 'list' object has no attribute 'get'
                 if isinstance(ksp_data, list):
                     ksp_data = ksp_data[0] if len(ksp_data) > 0 else {}
                 if not isinstance(ksp_data, dict):
@@ -593,7 +616,6 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                 doc = Document()
                 
-                # Шапка
                 doc.add_paragraph("_______________________________________________________________________").alignment = WD_ALIGN_PARAGRAPH.CENTER
                 p_org = doc.add_paragraph(t["org_name"])
                 p_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -607,7 +629,6 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                 p_topic.runs[0].bold = True
                 p_topic.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-                # ТАБЛИЦА 1: Общая информация
                 t1 = doc.add_table(rows=6, cols=2)
                 t1.style = 'Table Grid'
                 
@@ -628,7 +649,6 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                 doc.add_paragraph("\n" + t["ksp_course"])
                 
-                # ТАБЛИЦА 2: Ход урока (СТРОГО 4 КОЛОНКИ БЕЗ ОЦЕНИВАНИЯ)
                 t2 = doc.add_table(rows=1, cols=4)
                 t2.style = 'Table Grid'
                 headers2 = [t["ksp_stage"], t["ksp_teacher"], t["ksp_student"], t["ksp_res"]]
