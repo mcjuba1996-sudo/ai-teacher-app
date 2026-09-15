@@ -1,4 +1,3 @@
-
 import io
 import json
 import urllib.parse
@@ -548,7 +547,7 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
             except Exception as e: st.error(f"Ошибка ИИ: {e}")
 
 # ==========================================
-# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (АБСОЛЮТНО НОВЫЙ ГОС. СТАНДАРТ)
+# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (СТРОГИЕ ПРАВИЛА ГОС. СТАНДАРТА)
 # ==========================================
 elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КСП) AI-Конструкторы"]:
     st.title(menu_choice)
@@ -572,18 +571,21 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-3.6-flash")
                 
-                # Жёсткий промпт, запрещающий генерировать графу "Оценивание" и "Ценности"
-                prompt = (f"{t['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема '{topic_ksp}'. "
+                prompt = (f"{t['ai_lang_prompt']} Создай подробный план урока по предмету {subject_ksp}, тема '{topic_ksp}'. "
                           "СТРОГИЕ ПРАВИЛА: В плане НЕ должно быть столбца 'Оценивание', не пиши 'Критерии оценивания' и 'Ценности'. "
+                          "ОБЯЗАТЕЛЬНО распиши все 3 этапа урока: 'Начало урока', 'Основная часть', 'Конец урока'. "
                           "Верни строго JSON объект (БЕЗ markdown): "
                           "{\"section\":\"Название раздела (например, Искусственный интеллект)\", \"learning_targets\":\"...\", "
-                          "\"lesson_targets\":\"Смогут...\", \"stages\":[{\"time\":\"Начало урока (5-7 мин)\", "
-                          "\"teacher\":\"Действия учителя...\", \"student\":\"Действия учащихся...\", \"resources\":\"Презентация...\"}]}")
+                          "\"lesson_targets\":\"Смогут...\", \"stages\":["
+                          "{\"time\":\"Начало урока (5-7 мин)\", \"teacher\":\"...\", \"student\":\"...\", \"resources\":\"...\"}, "
+                          "{\"time\":\"Основная часть (30-33 мин)\", \"teacher\":\"...\", \"student\":\"...\", \"resources\":\"...\"}, "
+                          "{\"time\":\"Конец урока (5-7 мин)\", \"teacher\":\"...\", \"student\":\"...\", \"resources\":\"...\"}"
+                          "]}")
                 
                 res = model.generate_content(prompt)
                 ksp_data = clean_json_response(res.text)
 
-                # 🛡️ ЗАЩИТА: Если ИИ вернул список вместо словаря
+                # 🛡️ ЗАЩИТА ОТ ОШИБКИ 'list' object has no attribute 'get'
                 if isinstance(ksp_data, list):
                     ksp_data = ksp_data[0] if len(ksp_data) > 0 else {}
                 if not isinstance(ksp_data, dict):
@@ -591,13 +593,12 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                 doc = Document()
                 
-                # Шапка (Линии и организация)
+                # Шапка
                 doc.add_paragraph("_______________________________________________________________________").alignment = WD_ALIGN_PARAGRAPH.CENTER
                 p_org = doc.add_paragraph(t["org_name"])
                 p_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 p_org.runs[0].font.size = Pt(9)
                 
-                # Заголовок
                 p_title = doc.add_paragraph(t["ksp_title"])
                 p_title.runs[0].bold = True
                 p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -627,11 +628,11 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
 
                 doc.add_paragraph("\n" + t["ksp_course"])
                 
-                # ТАБЛИЦА 2: Ход урока (СТРОГО 4 КОЛОНКИ)
+                # ТАБЛИЦА 2: Ход урока (СТРОГО 4 КОЛОНКИ БЕЗ ОЦЕНИВАНИЯ)
                 t2 = doc.add_table(rows=1, cols=4)
                 t2.style = 'Table Grid'
                 headers2 = [t["ksp_stage"], t["ksp_teacher"], t["ksp_student"], t["ksp_res"]]
-                widths2 = [1.2, 2.5, 2.5, 1.0] # Сумма ~7.2 дюйма
+                widths2 = [1.2, 2.5, 2.5, 1.0]
                 
                 hdr_cells2 = t2.rows[0].cells
                 for i, h in enumerate(headers2):
@@ -639,7 +640,6 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                     hdr_cells2[i].paragraphs[0].runs[0].bold = True
                     hdr_cells2[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-                # Заполнение этапов
                 stages = ksp_data.get("stages", [])
                 if isinstance(stages, list):
                     for stg in stages:
@@ -650,7 +650,6 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
                             row[2].text = str(stg.get("student", ""))
                             row[3].text = str(stg.get("resources", ""))
                     
-                # Применяем ширину колонок ко 2-й таблице
                 for row in t2.rows:
                     for idx, width in enumerate(widths2):
                         row.cells[idx].width = Inches(width)
