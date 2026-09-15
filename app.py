@@ -1,3 +1,4 @@
+%%writefile app.py
 import io
 import json
 import urllib.parse
@@ -38,8 +39,8 @@ translations = {
             "👤 Генератор характеристик",
             "⚡ Разминки и интерактивы",
         ],
-        "no_key": "Ключ не найден! Введите свой Gemini API Key слева или убедитесь, что настроен базовый ключ.",
-        "warning_default_key": "⚠️ Вы используете общий API-ключ. При высокой нагрузке от других учителей он может временно не работать. Рекомендуем получить свой бесплатный ключ!",
+        "no_key": "❌ Ошибка: Введите ваш Gemini API Key в боковой панели слева!",
+        "warning_default_key": "⚠️ Вы используете общий API-ключ. При высокой нагрузке от других учителей он может временно не работать.",
         "ai_lang_prompt": "Напиши ответ строго на русском языке.",
         
         "source": "Источник данных:",
@@ -129,6 +130,22 @@ translations = {
         "warm_time": "Тайминг (минут):",
         "warm_btn": "Подобрать активности",
         "warm_wait": "Генерация интерактивных заданий...",
+        
+        # Переводы для КСП
+        "org_name": "(наименование организации образования)",
+        "ksp_title": "Краткосрочный (поурочный) план",
+        "ksp_section": "Раздел",
+        "ksp_fio": "Фамилия, имя, отчество педагога",
+        "ksp_date": "Дата",
+        "ksp_class": "Класс:",
+        "ksp_attend": "Количество присутствующих:\nКоличество отсутствующих:",
+        "ksp_learn_tgt": "Цели обучения в соответствии с учебной программой",
+        "ksp_less_tgt": "Цели урока",
+        "ksp_course": "Ход урока",
+        "ksp_stage": "Этап урока / время",
+        "ksp_teacher": "Действия педагога",
+        "ksp_student": "Действия ученика",
+        "ksp_res": "Ресурсы",
     },
     "kk": {
         "page_title": "Bilim AI — Мұғалім Көмекшісі",
@@ -148,8 +165,8 @@ translations = {
             "👤 Мінездеме генераторы",
             "⚡ Сергіту сәттері мен интерактив",
         ],
-        "no_key": "Кілт табылмады! Өз Gemini API кілтіңізді енгізіңіз.",
-        "warning_default_key": "⚠️ Сіз жалпы API кілтін пайдаланып жатырсыз. Жүктеме көп болғанда істемей қалуы мүмкін. Өз кілтіңізді алуға кеңес береміз!",
+        "no_key": "❌ Қате: Сол жақ мәзірде Gemini API кілтіңізді енгізіңіз!",
+        "warning_default_key": "⚠️ Сіз жалпы API кілтін пайдаланып жатырсыз. Жүктеме көп болғанда істемей қалуы мүмкін.",
         "ai_lang_prompt": "Жауапты қатаң түрде қазақ тілінде жаз.",
         
         "source": "Дереккөз:",
@@ -239,6 +256,22 @@ translations = {
         "warm_time": "Тайминг (минут):",
         "warm_btn": "Белсенділіктерді таңдау",
         "warm_wait": "Интерактивті тапсырмалар жасалуда...",
+        
+        # Переводы для КСП (ҚМЖ)
+        "org_name": "(білім беру ұйымының атауы)",
+        "ksp_title": "Қысқа мерзімді жоспар (ҚМЖ)",
+        "ksp_section": "Бөлімі",
+        "ksp_fio": "Педагогтің аты-жөні",
+        "ksp_date": "Күні",
+        "ksp_class": "Сынып:",
+        "ksp_attend": "Қатысушылар саны:\nҚатыспағандар саны:",
+        "ksp_learn_tgt": "Оқу бағдарламасына сәйкес оқу мақсаты",
+        "ksp_less_tgt": "Сабақтың мақсаты",
+        "ksp_course": "Сабақтың барысы (Үлгі)",
+        "ksp_stage": "Сабақ кезеңі / уақыты",
+        "ksp_teacher": "Педагогтің әрекеті",
+        "ksp_student": "Оқушының әрекеті",
+        "ksp_res": "Ресурстар",
     }
 }
 
@@ -265,8 +298,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ⚠️ ДЕФОЛТНЫЙ КЛЮЧ (можно оставить пустым или вписать ваш) ⚠️
-DEFAULT_API_KEY = "AQ.Ab8RN6JTeN0w24wGgXPHwpCEeLns54rrzXCLvZLZg_fJMU9Aqw"
+# ⚠️ ДЕФОЛТНЫЙ КЛЮЧ (безопасно берется из секретов Streamlit, если задан)
+try:
+    DEFAULT_API_KEY = st.secrets.get("DEFAULT_API_KEY", "")
+except:
+    DEFAULT_API_KEY = ""
 
 # ==========================================
 # 2. БОКОВОЕ МЕНЮ И УПРАВЛЕНИЕ КЛЮЧАМИ
@@ -307,42 +343,29 @@ def clean_json_response(text):
     return json.loads(text)
 
 def generate_excel_template():
-    """Создает шаблон Excel файла для скачивания"""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_questions = pd.DataFrame({
-            "Вопрос": [
-                "Что такое алгоритм?", 
-                "Какой язык программирования используется для ИИ?", 
-                "Что такое оперативная память?"
-            ],
-            "Ответ": [
-                "Пошаговая инструкция для решения задачи", 
-                "Python", 
-                "Энергозависимая память для хранения текущих данных"
-            ],
+            "Вопрос": ["Что такое алгоритм?", "Какой язык используется для ИИ?", "Что такое ОЗУ?"],
+            "Ответ": ["Пошаговая инструкция", "Python", "Энергозависимая память"],
             "Сложность": ["Легкий", "Средний", "Сложный"]
         })
-        df_students = pd.DataFrame({
-            "ФИО": ["Иванов Иван", "Петров Петр", "Смирнова Анна"]
-        })
+        df_students = pd.DataFrame({"ФИО": ["Иванов Иван", "Петров Петр", "Смирнова Анна"]})
         df_questions.to_excel(writer, sheet_name='Банк_вопросов', index=False)
         df_students.to_excel(writer, sheet_name='Ученики', index=False)
     output.seek(0)
     return output.getvalue()
 
 # ==========================================
-# МОДУЛЬ 1: ГЕНЕРАТОР КАРТОЧЕК + ШАБЛОН
+# МОДУЛЬ 1: ГЕНЕРАТОР КАРТОЧЕК
 # ==========================================
 if menu_choice in ["📝 Генератор карточек", "📝 Тапсырма карточкаларын жасау"]:
     st.title(menu_choice)
     st.info(t["template_info"])
     
-    # КНОПКА СКАЧИВАНИЯ ШАБЛОНА
-    template_bytes = generate_excel_template()
     st.download_button(
         label=t["download_template"],
-        data=template_bytes,
+        data=generate_excel_template(),
         file_name="BilimAI_Template.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -371,9 +394,9 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
             students_list = df_students.iloc[:, 0].dropna().tolist()
             st.success(t["success_excel"])
             
-    else: # ГЕНЕРАЦИЯ ЧЕРЕЗ ИИ
-        ai_topic = st.text_input(f"🧠 {t['ai_topic_lbl']}", "Устройство компьютера и память")
-        ai_students_raw = st.text_area(f"👥 {t['ai_students_lbl']}", "Иванов Иван\nПетров Петр\nСмирнова Анна")
+    else: 
+        ai_topic = st.text_input(f"🧠 {t['ai_topic_lbl']}", "Устройство компьютера")
+        ai_students_raw = st.text_area(f"👥 {t['ai_students_lbl']}", "Иванов Иван\nПетров Петр")
         students_list = [s.strip() for s in ai_students_raw.replace(',', '\n').split('\n') if s.strip()]
 
     st.markdown(f"#### ⚙️ {t['settings']}")
@@ -383,69 +406,63 @@ if menu_choice in ["📝 Генератор карточек", "📝 Тапсы�
     with col3: count_hard = st.number_input(f"🔴 {t['hard']}", min_value=0, max_value=5, value=1)
 
     if st.button(f"🚀 {t['gen_word']}", type="primary", use_container_width=True):
-        if not active_key: st.error(t["no_key"])
-        elif not students_list: st.warning("Добавьте учеников!")
-        else:
-            with st.spinner(f"⏳ {t['wait_ai']}"):
-                try:
-                    if "ИИ" in source_type or "ЖИ" in source_type:
-                        genai.configure(api_key=active_key)
-                        model = genai.GenerativeModel("gemini-3.6-flash")
-                        prompt = f"{t['ai_lang_prompt']} Сгенерируй базу из {count_easy*3} легких, {count_med*3} средних и {count_hard*3} сложных вопросов по теме '{ai_topic}'. Верни строго JSON массив: [{{'вопрос': '...', 'ответ': '...', 'сложность': 'Легкий'}}, ...]"
-                        res = model.generate_content(prompt)
-                        q_data = clean_json_response(res.text)
-                        df_questions = pd.DataFrame(q_data)
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+        if not students_list: 
+            st.warning("Добавьте учеников!")
+            st.stop()
+            
+        with st.spinner(f"⏳ {t['wait_ai']}"):
+            try:
+                if "ИИ" in source_type or "ЖИ" in source_type:
+                    genai.configure(api_key=active_key)
+                    model = genai.GenerativeModel("gemini-3.6-flash")
+                    prompt = f"{t['ai_lang_prompt']} Сгенерируй базу из {count_easy*3} легких, {count_med*3} средних и {count_hard*3} сложных вопросов по теме '{ai_topic}'. Верни строго JSON массив: [{{'вопрос': '...', 'ответ': '...', 'сложность': 'Легкий'}}, ...]"
+                    res = model.generate_content(prompt)
+                    df_questions = pd.DataFrame(clean_json_response(res.text))
 
-                    df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
-                    rename_dict = {}
-                    for col in df_questions.columns:
-                        if "сложн" in col or "күрдел" in col or "қиын" in col: rename_dict[col] = "сложность"
-                        elif "вопрос" in col or "сұрақ" in col: rename_dict[col] = "вопрос"
-                        elif "ответ" in col or "жауап" in col: rename_dict[col] = "ответ"
-                    df_questions = df_questions.rename(columns=rename_dict)
+                df_questions.columns = df_questions.columns.astype(str).str.strip().str.lower()
+                rename_dict = {col: "сложность" if "сложн" in col or "қиын" in col else "вопрос" if "вопрос" in col or "сұрақ" in col else "ответ" if "ответ" in col or "жауап" in col else col for col in df_questions.columns}
+                df_questions = df_questions.rename(columns=rename_dict)
 
-                    doc_students = Document()
-                    doc_teacher = Document()
-                    doc_teacher.add_heading(t["keys_title"], level=1)
+                doc_students, doc_teacher = Document(), Document()
+                doc_teacher.add_heading(t["keys_title"], level=1)
+                
+                structure = {"Жеңіл" if lang=="kk" else "Легкий": count_easy, "Орташа": count_med, "Қиын" if lang=="kk" else "Сложный": count_hard}
+
+                for student in students_list:
+                    variant_questions = []
+                    for level, count in structure.items():
+                        if count > 0:
+                            subset = df_questions[df_questions["сложность"].astype(str).str.strip().str.capitalize().str.contains(level[:3], case=False, na=False)]
+                            if len(subset) == 0: subset = df_questions
+                            variant_questions.append(subset.sample(n=min(count, len(subset))))
                     
-                    structure = {"Легкий": count_easy, "Средний": count_med, "Сложный": count_hard}
-                    if lang == "kk": structure = {"Жеңіл": count_easy, "Орташа": count_med, "Қиын": count_hard}
-
-                    for student in students_list:
-                        variant_questions = []
-                        for level, count in structure.items():
-                            if count > 0:
-                                subset = df_questions[df_questions["сложность"].astype(str).str.strip().str.capitalize().str.contains(level[:3], case=False, na=False)]
-                                if len(subset) == 0: subset = df_questions
-                                variant_questions.append(subset.sample(n=min(count, len(subset))))
-                        
-                        student_variant = pd.concat(variant_questions).reset_index(drop=True)
-                        
-                        title = doc_students.add_heading("Проверочная работа" if lang=="ru" else "Бақылау жұмысы", level=2)
-                        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        doc_students.add_paragraph().add_run(f"{t['student_lbl']} {student}").bold = True
-                        
-                        doc_teacher.add_paragraph().add_run(f"\n👤 {student}").bold = True
-
-                        for idx, row in student_variant.iterrows():
-                            p_q = doc_students.add_paragraph()
-                            p_q.add_run(f"{t['task_lbl']} {idx + 1}. ").bold = True
-                            p_q.add_run(f"{row.get('вопрос', 'Ошибка вопроса')}\n")
-                            p_q.add_run(t["answer_lbl"])
-                            
-                            doc_teacher.add_paragraph(f"  • {t['task_lbl']} {idx + 1}: {row.get('ответ', 'Нет ответа')}")
-                            
-                        doc_students.add_paragraph("--------------------------------------------------")
-
-                    bio_students, bio_teacher = io.BytesIO(), io.BytesIO()
-                    doc_students.save(bio_students)
-                    doc_teacher.save(bio_teacher)
+                    student_variant = pd.concat(variant_questions).reset_index(drop=True)
                     
-                    st.success(f"🎉 {t['done']}")
-                    col_d1, col_d2 = st.columns(2)
-                    with col_d1: st.download_button(f"📄 {t['download_cards']}", bio_students.getvalue(), "Карточки.docx", use_container_width=True)
-                    with col_d2: st.download_button(f"🔑 {t['download_keys']}", bio_teacher.getvalue(), "Ключи.docx", use_container_width=True)
-                except Exception as e: st.error(f"Произошла ошибка при обработке данных: {e}")
+                    doc_students.add_heading("Бақылау жұмысы" if lang=="kk" else "Проверочная работа", level=2).alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    doc_students.add_paragraph().add_run(f"{t['student_lbl']} {student}").bold = True
+                    doc_teacher.add_paragraph().add_run(f"\n👤 {student}").bold = True
+
+                    for idx, row in student_variant.iterrows():
+                        p_q = doc_students.add_paragraph()
+                        p_q.add_run(f"{t['task_lbl']} {idx + 1}. ").bold = True
+                        p_q.add_run(f"{row.get('вопрос', 'Ошибка')}\n")
+                        p_q.add_run(t["answer_lbl"])
+                        doc_teacher.add_paragraph(f"  • {t['task_lbl']} {idx + 1}: {row.get('ответ', 'Нет ответа')}")
+                        
+                    doc_students.add_paragraph("--------------------------------------------------")
+
+                bio_students, bio_teacher = io.BytesIO(), io.BytesIO()
+                doc_students.save(bio_students)
+                doc_teacher.save(bio_teacher)
+                
+                st.success(f"🎉 {t['done']}")
+                col_d1, col_d2 = st.columns(2)
+                with col_d1: st.download_button(f"📄 {t['download_cards']}", bio_students.getvalue(), "Карточки.docx", use_container_width=True)
+                with col_d2: st.download_button(f"🔑 {t['download_keys']}", bio_teacher.getvalue(), "Ключи.docx", use_container_width=True)
+            except Exception as e: st.error(f"Ошибка: {e}")
 
 # ==========================================
 # МОДУЛЬ 2: AI-ГЕНЕРАТОР КТП 
@@ -467,86 +484,71 @@ elif menu_choice in ["📅 AI-Генератор КТП", "📅 КТП AI-Ген
 
     source_type = st.radio(t["source_pdf_text"], t["pdf_opt"], horizontal=True)
     uploaded_pdf, textbook_content = None, ""
-    
     if "PDF" in source_type:
         uploaded_pdf = st.file_uploader("📂 PDF:", type=["pdf"])
     else:
-        textbook_content = st.text_area(t["topics_lbl"], "Работа с информацией\nСвойства информации\nСовместная работа с документами\nЗдоровье и безопасность\nКонфигурация компьютера", height=100)
+        textbook_content = st.text_area(t["topics_lbl"], "Работа с информацией\nСвойства информации\nЗдоровье и безопасность", height=100)
 
     if st.button(f"🚀 {t['gen_ktp']}", type="primary", use_container_width=True):
-        if not active_key: st.error(t["no_key"])
-        else:
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+            
+        with st.spinner(f"⏳ {t['wait_ktp']}"):
             try:
-                with st.spinner(f"⏳ {t['wait_ktp']}"):
-                    genai.configure(api_key=active_key)
-                    model = genai.GenerativeModel("gemini-3.6-flash")
-                    
-                    prompt = f"{t['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив (БЕЗ markdown): [{{\"quarter\":1, \"lesson_num\":1, \"section\":\"Название раздела\", \"topic\":\"Тема урока\", \"targets\":\"Цель обучения\"}}]"
-                    
-                    if uploaded_pdf:
-                        response = model.generate_content([prompt, uploaded_pdf])
-                    else:
-                        response = model.generate_content(prompt)
+                genai.configure(api_key=active_key)
+                model = genai.GenerativeModel("gemini-3.6-flash")
+                prompt = f"{t['ai_lang_prompt']} Составь КТП по предмету {subject}, {grade} класс, уроков: {total_all_lessons}. Темы: {textbook_content}. Верни строго JSON массив: [{{\"quarter\":1, \"lesson_num\":1, \"section\":\"Название раздела\", \"topic\":\"Тема урока\", \"targets\":\"Цель обучения\"}}]"
+                
+                response = model.generate_content([prompt, uploaded_pdf]) if uploaded_pdf else model.generate_content(prompt)
+                ktp_data = clean_json_response(response.text)
+
+                doc = Document()
+                section_doc = doc.sections[-1]
+                section_doc.orientation, section_doc.page_width, section_doc.page_height = WD_ORIENT.LANDSCAPE, section_doc.page_height, section_doc.page_width
+
+                title = doc.add_paragraph()
+                title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run1 = title.add_run(f"КАЛЕНДАРНО-ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ\nПО {subject.upper()} ДЛЯ {grade} КЛАССА\n" if lang=="ru" else f"КҮНТІЗБЕЛІК-ТАҚЫРЫПТЫҚ ЖОСПАР\n{grade} СЫНЫПҚА АРНАЛҒАН\n")
+                run1.bold, run1.font.size = True, Pt(14)
+                run2 = title.add_run(f"на 2024-2025 учебный год\n({hours_per_week} час в неделю, всего {total_all_lessons} часов)")
+                run2.font.size = Pt(12)
+
+                table = doc.add_table(rows=1, cols=7)
+                table.style = 'Table Grid'
+                headers = ["№ п/п", "Раздел/ Сквозные темы", "Темы урока", "Цель обучения", "Кол-во\nчасов", "Дата\nпроведения", "Примечание"]
+                widths = [0.5, 1.5, 2.5, 3.5, 0.7, 1.0, 1.0]
+
+                for i, h in enumerate(headers):
+                    table.rows[0].cells[i].text = h
+                    table.rows[0].cells[i].paragraphs[0].runs[0].bold = True
+                    table.rows[0].cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                current_quarter = None
+                for item in ktp_data:
+                    q = str(item.get("quarter", ""))
+                    if q != current_quarter and q.strip():
+                        row_q = table.add_row()
+                        merged_cell = row_q.cells[0].merge(row_q.cells[-1])
+                        merged_cell.text = f"{q} четверть" if lang=="ru" else f"{q} тоқсан"
+                        merged_cell.paragraphs[0].runs[0].bold = True
+                        merged_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        current_quarter = q
                         
-                    ktp_data = clean_json_response(response.text)
+                    row = table.add_row().cells
+                    row[0].text, row[1].text, row[2].text, row[3].text, row[4].text = str(item.get("lesson_num", "")), str(item.get("section", "")), str(item.get("topic", "")), str(item.get("targets", "")), "1"
+                
+                for row in table.rows:
+                    for idx, width in enumerate(widths): row.cells[idx].width = Inches(width)
 
-                    doc = Document()
-                    section_doc = doc.sections[-1]
-                    section_doc.orientation = WD_ORIENT.LANDSCAPE
-                    section_doc.page_width, section_doc.page_height = section_doc.page_height, section_doc.page_width
-
-                    title = doc.add_paragraph()
-                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    run1 = title.add_run(f"КАЛЕНДАРНО-ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ\nПО {subject.upper()} ДЛЯ {grade} КЛАССА\n")
-                    run1.bold = True
-                    run1.font.size = Pt(14)
-                    run2 = title.add_run(f"на 2024-2025 учебный год\n({hours_per_week} час в неделю, всего {total_all_lessons} часов)")
-                    run2.font.size = Pt(12)
-
-                    table = doc.add_table(rows=1, cols=7)
-                    table.style = 'Table Grid'
-                    
-                    headers = ["№ п/п", "Раздел/ Сквозные темы", "Темы урока", "Цель обучения", "Кол-во\nчасов", "Дата\nпроведения", "Примечание"]
-                    widths = [0.5, 1.5, 2.5, 3.5, 0.7, 1.0, 1.0]
-
-                    hdr_cells = table.rows[0].cells
-                    for i, h in enumerate(headers):
-                        hdr_cells[i].text = h
-                        hdr_cells[i].paragraphs[0].runs[0].bold = True
-                        hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-                    current_quarter = None
-                    for item in ktp_data:
-                        q = str(item.get("quarter", ""))
-                        if q != current_quarter and q.strip():
-                            row_q = table.add_row()
-                            merged_cell = row_q.cells[0].merge(row_q.cells[-1])
-                            merged_cell.text = f"{q} четверть"
-                            merged_cell.paragraphs[0].runs[0].bold = True
-                            merged_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            current_quarter = q
-                            
-                        row = table.add_row().cells
-                        row[0].text = str(item.get("lesson_num", ""))
-                        row[1].text = str(item.get("section", ""))
-                        row[2].text = str(item.get("topic", ""))
-                        row[3].text = str(item.get("targets", ""))
-                        row[4].text = "1"
-                        row[5].text = ""
-                        row[6].text = ""
-                    
-                    for row in table.rows:
-                        for idx, width in enumerate(widths):
-                            row.cells[idx].width = Inches(width)
-
-                    bio = io.BytesIO()
-                    doc.save(bio)
-                    st.success(f"🎉 {t['done']}")
-                    st.download_button(f"📄 {t['download_ktp']}", bio.getvalue(), f"КТП_{subject}.docx", use_container_width=True)
-            except Exception as e: st.error(f"Ошибка парсинга или ИИ: {e}")
+                bio = io.BytesIO()
+                doc.save(bio)
+                st.success(f"🎉 {t['done']}")
+                st.download_button(f"📄 {t['download_ktp']}", bio.getvalue(), f"КТП_{subject}.docx", use_container_width=True)
+            except Exception as e: st.error(f"Ошибка ИИ: {e}")
 
 # ==========================================
-# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (ПО ГОС. СТАНДАРТУ)
+# МОДУЛЬ 3: AI-КОНСТРУКТОР КСП (АБСОЛЮТНО НОВЫЙ ГОС. СТАНДАРТ)
 # ==========================================
 elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КСП) AI-Конструкторы"]:
     st.title(menu_choice)
@@ -561,85 +563,104 @@ elif menu_choice in ["📋 AI-Конструктор КСП", "📋 ҚМЖ (КС
         target_ksp = st.text_input(t["target_lbl"], "11.3.4.3 проектировать нейронную сеть в электронных таблицах;")
 
     if st.button(f"🚀 {t['gen_ksp']}", type="primary", use_container_width=True):
-        if not active_key: st.error(t["no_key"])
-        else:
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+            
+        with st.spinner(f"⏳ {t['wait_ksp']}"):
             try:
-                with st.spinner(f"⏳ {t['wait_ksp']}"):
-                    genai.configure(api_key=active_key)
-                    model = genai.GenerativeModel("gemini-3.6-flash")
-                    prompt = f"{t['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема {topic_ksp}. Верни строго JSON объект (БЕЗ markdown): {{\"section\":\"Название раздела\", \"learning_targets\":\"...\", \"lesson_targets\":\"Смогут...\", \"stages\":[{{\"time\":\"Начало урока 0-10 мин\", \"teacher\":\"...\", \"student\":\"...\", \"eval\":\"...\", \"resources\":\"...\"}}]}}"
-                    res = model.generate_content(prompt)
-                    ksp_data = clean_json_response(res.text)
+                genai.configure(api_key=active_key)
+                model = genai.GenerativeModel("gemini-3.6-flash")
+                
+                # Жёсткий промпт, запрещающий генерировать графу "Оценивание" и "Ценности"
+                prompt = (f"{t['ai_lang_prompt']} Создай план урока по предмету {subject_ksp}, тема '{topic_ksp}'. "
+                          "СТРОГИЕ ПРАВИЛА: В плане НЕ должно быть столбца 'Оценивание', не пиши 'Критерии оценивания' и 'Ценности'. "
+                          "Верни строго JSON объект (БЕЗ markdown): "
+                          "{\"section\":\"Название раздела (например, Искусственный интеллект)\", \"learning_targets\":\"...\", "
+                          "\"lesson_targets\":\"Смогут...\", \"stages\":[{\"time\":\"Начало урока (5-7 мин)\", "
+                          "\"teacher\":\"Действия учителя...\", \"student\":\"Действия учащихся...\", \"resources\":\"Презентация...\"}]}")
+                
+                res = model.generate_content(prompt)
+                ksp_data = clean_json_response(res.text)
 
-                    # 🛡️ ЗАЩИТА ОТ ОШИБКИ 'list' object has no attribute 'get'
-                    if isinstance(ksp_data, list):
-                        ksp_data = ksp_data[0] if len(ksp_data) > 0 else {}
-                    if not isinstance(ksp_data, dict):
-                        ksp_data = {}
+                # 🛡️ ЗАЩИТА: Если ИИ вернул список вместо словаря
+                if isinstance(ksp_data, list):
+                    ksp_data = ksp_data[0] if len(ksp_data) > 0 else {}
+                if not isinstance(ksp_data, dict):
+                    ksp_data = {}
 
-                    doc = Document()
-                    doc.add_paragraph("_______________________________________________________________________").alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p_org = doc.add_paragraph("(наименование организации образования)")
-                    p_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p_org.runs[0].font.size = Pt(9)
+                doc = Document()
+                
+                # Шапка (Линии и организация)
+                doc.add_paragraph("_______________________________________________________________________").alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_org = doc.add_paragraph(t["org_name"])
+                p_org.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_org.runs[0].font.size = Pt(9)
+                
+                # Заголовок
+                p_title = doc.add_paragraph(t["ksp_title"])
+                p_title.runs[0].bold = True
+                p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                p_topic = doc.add_paragraph(topic_ksp)
+                p_topic.runs[0].bold = True
+                p_topic.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                # ТАБЛИЦА 1: Общая информация
+                t1 = doc.add_table(rows=6, cols=2)
+                t1.style = 'Table Grid'
+                
+                info_mapping = [
+                    (t["ksp_section"], str(ksp_data.get("section", ""))),
+                    (t["ksp_fio"], teacher_name),
+                    (t["ksp_date"], ""),
+                    (t["ksp_class"] + f" {grade_ksp}", t["ksp_attend"]),
+                    (t["ksp_learn_tgt"], str(ksp_data.get("learning_targets", target_ksp))),
+                    (t["ksp_less_tgt"], str(ksp_data.get("lesson_targets", "")))
+                ]
+                
+                for idx, (lbl, val) in enumerate(info_mapping):
+                    t1.rows[idx].cells[0].text = lbl
+                    t1.rows[idx].cells[1].text = val
+                    t1.rows[idx].cells[0].width = Inches(2.0)
+                    t1.rows[idx].cells[1].width = Inches(4.5)
+
+                doc.add_paragraph("\n" + t["ksp_course"])
+                
+                # ТАБЛИЦА 2: Ход урока (СТРОГО 4 КОЛОНКИ)
+                t2 = doc.add_table(rows=1, cols=4)
+                t2.style = 'Table Grid'
+                headers2 = [t["ksp_stage"], t["ksp_teacher"], t["ksp_student"], t["ksp_res"]]
+                widths2 = [1.2, 2.5, 2.5, 1.0] # Сумма ~7.2 дюйма
+                
+                hdr_cells2 = t2.rows[0].cells
+                for i, h in enumerate(headers2):
+                    hdr_cells2[i].text = h
+                    hdr_cells2[i].paragraphs[0].runs[0].bold = True
+                    hdr_cells2[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                # Заполнение этапов
+                stages = ksp_data.get("stages", [])
+                if isinstance(stages, list):
+                    for stg in stages:
+                        if isinstance(stg, dict):
+                            row = t2.add_row().cells
+                            row[0].text = str(stg.get("time", ""))
+                            row[1].text = str(stg.get("teacher", ""))
+                            row[2].text = str(stg.get("student", ""))
+                            row[3].text = str(stg.get("resources", ""))
                     
-                    p_title = doc.add_paragraph("Краткосрочный (поурочный) план")
-                    p_title.runs[0].bold = True
-                    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    p_topic = doc.add_paragraph(topic_ksp)
-                    p_topic.runs[0].bold = True
-                    p_topic.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                # Применяем ширину колонок ко 2-й таблице
+                for row in t2.rows:
+                    for idx, width in enumerate(widths2):
+                        row.cells[idx].width = Inches(width)
 
-                    t1 = doc.add_table(rows=6, cols=2)
-                    t1.style = 'Table Grid'
-                    
-                    t1.rows[0].cells[0].text = "Раздел"
-                    t1.rows[0].cells[1].text = str(ksp_data.get("section", ""))
-                    t1.rows[1].cells[0].text = "Фамилия, имя, отчество педагога"
-                    t1.rows[1].cells[1].text = teacher_name
-                    t1.rows[2].cells[0].text = "Дата"
-                    t1.rows[2].cells[1].text = ""
-                    t1.rows[3].cells[0].text = f"Класс: {grade_ksp}"
-                    t1.rows[3].cells[1].text = "Количество присутствующих: \nКоличество отсутствующих: "
-                    t1.rows[4].cells[0].text = "Цели обучения в соответствии с учебной программой"
-                    t1.rows[4].cells[1].text = str(ksp_data.get("learning_targets", target_ksp))
-                    t1.rows[5].cells[0].text = "Цели урока"
-                    t1.rows[5].cells[1].text = str(ksp_data.get("lesson_targets", ""))
-
-                    doc.add_paragraph("\nХод урока")
-                    
-                    t2 = doc.add_table(rows=1, cols=5)
-                    t2.style = 'Table Grid'
-                    headers2 = ["Этап урока", "Действия педагога", "Действия ученика", "Оценивание", "Ресурсы"]
-                    widths2 = [1.0, 2.5, 2.5, 1.2, 1.2]
-                    
-                    hdr_cells2 = t2.rows[0].cells
-                    for i, h in enumerate(headers2):
-                        hdr_cells2[i].text = h
-                        hdr_cells2[i].paragraphs[0].runs[0].bold = True
-                        hdr_cells2[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-                    stages = ksp_data.get("stages", [])
-                    if isinstance(stages, list):
-                        for stg in stages:
-                            if isinstance(stg, dict):
-                                row = t2.add_row().cells
-                                row[0].text = str(stg.get("time", ""))
-                                row[1].text = str(stg.get("teacher", ""))
-                                row[2].text = str(stg.get("student", ""))
-                                row[3].text = str(stg.get("eval", ""))
-                                row[4].text = str(stg.get("resources", ""))
-                        
-                    for row in t2.rows:
-                        for idx, width in enumerate(widths2):
-                            row.cells[idx].width = Inches(width)
-
-                    bio = io.BytesIO()
-                    doc.save(bio)
-                    st.success(f"🎉 {t['done']}")
-                    st.download_button(f"📄 {t['download_ksp']}", bio.getvalue(), f"КСП_{topic_ksp}.docx", use_container_width=True)
-            except Exception as e: st.error(f"Ошибка ИИ: {e}")
+                bio = io.BytesIO()
+                doc.save(bio)
+                st.success(f"🎉 {t['done']}")
+                st.download_button(f"📄 {t['download_ksp']}", bio.getvalue(), f"КСП_{topic_ksp}.docx", use_container_width=True)
+            except Exception as e: 
+                st.error(f"Ошибка ИИ: {e}")
 
 # ==========================================
 # МОДУЛЬ 4: EDA
@@ -704,13 +725,14 @@ elif menu_choice in ["📷 AI-Проверка по фото", "📷 Фото а
     st.divider()
     img = st.file_uploader(f"📂 {t['photo_load']}", type=["jpg", "png"])
     if img and st.button(t["photo_check"], type="primary"):
-        if not active_key: st.error(t["no_key"])
-        else:
-            with st.spinner(f"⏳ {t['photo_wait']}"):
-                genai.configure(api_key=active_key)
-                model = genai.GenerativeModel("gemini-3.6-flash")
-                res = model.generate_content([f"{t['ai_lang_prompt']} Проверь работу ученика. Укажи на ошибки, если они есть:", Image.open(img)])
-                st.markdown(res.text)
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+        with st.spinner(f"⏳ {t['photo_wait']}"):
+            genai.configure(api_key=active_key)
+            model = genai.GenerativeModel("gemini-3.6-flash")
+            res = model.generate_content([f"{t['ai_lang_prompt']} Проверь работу ученика. Укажи на ошибки, если они есть:", Image.open(img)])
+            st.markdown(res.text)
 
 # ==========================================
 # МОДУЛЬ 7: ХАРАКТЕРИСТИКА
@@ -731,14 +753,15 @@ elif menu_choice in ["👤 Генератор характеристик", "👤
     traits = st.text_area(t["traits_lbl"], "...")
 
     if st.button(f"🚀 {t['char_btn']}", type="primary", use_container_width=True):
-        if not active_key: st.error(t["no_key"])
-        else:
-            with st.spinner(f"⏳ {t['char_wait']}"):
-                genai.configure(api_key=active_key)
-                model = genai.GenerativeModel("gemini-3.6-flash")
-                prompt = f"{t['ai_lang_prompt']} Напиши официальную характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}."
-                res = model.generate_content(prompt)
-                st.markdown(res.text)
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+        with st.spinner(f"⏳ {t['char_wait']}"):
+            genai.configure(api_key=active_key)
+            model = genai.GenerativeModel("gemini-3.6-flash")
+            prompt = f"{t['ai_lang_prompt']} Напиши официальную характеристику на ученика {name}, класс {cls}. Посещаемость: {att}%, успеваемость: {perf}, поведение: {beh}, доп: {traits}."
+            res = model.generate_content(prompt)
+            st.markdown(res.text)
 
 # ==========================================
 # МОДУЛЬ 8: РАЗМИНКИ
@@ -754,33 +777,12 @@ elif menu_choice in ["⚡ Разминки и интерактивы", "⚡ Се
         tm = st.slider(t["warm_time"], 2, 10, 5)
 
     if st.button(f"🚀 {t['warm_btn']}", type="primary", use_container_width=True):
-        if not active_key: st.error(t["no_key"])
-        else:
-            with st.spinner(f"⏳ {t['warm_wait']}"):
-                genai.configure(api_key=active_key)
-                model = genai.GenerativeModel("gemini-3.6-flash")
-                prompt = f"{t['ai_lang_prompt']} Предложи 3 разминки на тему {top} на {tm} минут."
-                res = model.generate_content(prompt)
-                st.markdown(res.text)
-
-# ==========================================
-# 📊 GOOGLE ANALYTICS СЧЕТЧИК
-# ==========================================
-GA_TRACKING_ID = "G-XXXXXXXXXX" 
-ga_component = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id={GA_TRACKING_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){{dataLayer.push(arguments);}}
-      gtag('js', new Date());
-      gtag('config', '{GA_TRACKING_ID}');
-    </script>
-</head>
-<body>
-</body>
-</html>
-"""
-components.html(ga_component, height=0, width=0)
+        if not active_key:
+            st.error(t["no_key"])
+            st.stop()
+        with st.spinner(f"⏳ {t['warm_wait']}"):
+            genai.configure(api_key=active_key)
+            model = genai.GenerativeModel("gemini-3.6-flash")
+            prompt = f"{t['ai_lang_prompt']} Предложи 3 разминки на тему {top} на {tm} минут."
+            res = model.generate_content(prompt)
+            st.markdown(res.text)
