@@ -1,4 +1,4 @@
-"""Bilim AI: eight bilingual teacher tools with persistent validated results."""
+"""Bilim AI bilingual teacher tools with persistent validated results."""
 import hashlib
 import io
 import json
@@ -12,6 +12,8 @@ import streamlit as st
 
 import ai_service
 import bilim_core as core
+from python_bank import bank_tasks
+from python_generator import MAX_REQUEST_LENGTH, build_task_prompt, validate_task
 from ui_helpers import (DOCX_MIME, XLSX_MIME, ERRORS, fingerprint, upload_bytes,
                         text_document, image_attachment, read_google_cards)
 
@@ -26,7 +28,8 @@ def sync_translated_selections():
     # Streamlit sends formatted labels to the browser. Reassign the stable
     # option IDs on a language change to send the corresponding new labels.
     for key in ("module", "cards_source", "ktp_source", "eda_source",
-                "ml_activity", "char_performance", "char_behaviour"):
+                "ml_activity", "char_performance", "char_behaviour",
+                "py_mode", "py_story", "py_number", "py_level"):
         if key in st.session_state:
             st.session_state[key] = st.session_state[key]
 
@@ -42,6 +45,7 @@ def tr(ru, kk):
 
 MODULES = {
     "cards": ("📝 Генератор карточек", "📝 Тапсырма карточкалары"),
+    "python": ("🐍 Задачник Python", "🐍 Python есептер жинағы"),
     "ktp": ("📅 Календарно-тематический план", "📅 Күнтізбелік-тақырыптық жоспар"),
     "ksp": ("📋 Конструктор КСП", "📋 ҚМЖ құрастыру"),
     "eda": ("📊 Анализ успеваемости", "📊 Үлгерімді талдау"),
@@ -64,8 +68,8 @@ if active_key:
     ai_settings.caption(tr("Общий ключ указан; проверится при запросе." if using_shared else "Ваш ключ указан; проверится при запросе.",
                           "Ортақ кілт көрсетілген; сұрау кезінде тексеріледі." if using_shared else "Сіздің кілтіңіз көрсетілген; сұрау кезінде тексеріледі."))
 else:
-    ai_settings.info(tr("Без ключа доступны карточки из готовых данных, аналитика и демонстрация ML.",
-                       "Кілтсіз дайын деректерден карточкалар, талдау және ML демонстрациясы қолжетімді."))
+    ai_settings.info(tr("Без ключа доступны банк задач Python, карточки из готовых данных, аналитика и демонстрация ML.",
+                       "Кілтсіз Python есептер қоры, дайын деректерден карточкалар, талдау және ML демонстрациясы қолжетімді."))
 ai_settings.markdown(tr("Получите ключ в [Google AI Studio](https://aistudio.google.com/app/apikey) и введите выше. Общий ключ настраивает владелец приложения.",
                         "[Google AI Studio](https://aistudio.google.com/app/apikey) арқылы кілт алып, жоғарыда енгізіңіз. Ортақ кілтті қосымша иесі баптайды."))
 st.sidebar.caption(tr("Используйте демонстрационные данные и обозначения «Ученик 01». Не загружайте личные данные реальных учеников.",
@@ -75,6 +79,9 @@ with st.container(key="bilim_heading"):
     st.title(title)
     if module == "cards":
         st.caption(tr("Карточки и ответы сохраняются вместе. Готовый банк вопросов работает без ИИ.", "Карточкалар мен жауаптар бірге сақталады. Дайын сұрақтар қоры ЖИ-сіз жұмыс істейді."))
+    elif module == "python":
+        st.caption(tr("Выберите задачу для урока или опишите свою тему для Gemini.",
+                      "Сабаққа дайын есеп таңдаңыз немесе Gemini үшін өз тақырыбыңызды сипаттаңыз."))
     elif module == "ksp":
         st.caption(tr("Укажите тему и цель обучения для выбранного класса. Готовый план можно скачать в Word.", "Таңдалған сыныптың сабақ тақырыбы мен оқу мақсатын енгізіңіз. Дайын жоспарды Word форматында жүктей аласыз."))
     elif module == "ktp":
@@ -229,6 +236,98 @@ def render_cards():
             st.write(first["student"])
             for index, question in enumerate(first["questions"], 1):
                 st.write(f"{index}. {question['question']}")
+
+
+def render_python_exercise(task, *, from_bank):
+    st.subheader(task["title"])
+    if from_bank:
+        st.caption(tr(f'{task["points"]} баллов', f'{task["points"]} ұпай'))
+    st.write(task["statement"])
+    input_label = tr("Ввод", "Кіріс")
+    output_label = tr("Вывод", "Шығыс")
+    worksheet = [task["title"], "", task["statement"]]
+    for index, example in enumerate(task["examples"], 1):
+        heading = tr(f"Пример {index}", f"{index}-мысал")
+        st.markdown(f"**{heading}**")
+        a, b = st.columns(2)
+        for column, label, value in ((a, input_label, example["input"]),
+                                     (b, output_label, example["output"])):
+            column.caption(label)
+            if value:
+                column.code(value, language=None)
+            else:
+                column.caption(tr("Пусто", "Бос"))
+        worksheet.extend(["", heading, input_label, example["input"], output_label, example["output"]])
+    student_text = "\n".join(worksheet) + "\n"
+    if from_bank:
+        download(tr("Скачать задачу · TXT", "Есепті жүктеу · TXT"), student_text,
+                 f"python-{st.session_state.py_story}-{task['number']}-{lang}.txt", "text/plain", "py_bank_download")
+        return
+    hint_label = tr("Подсказка", "Кеңес")
+    solution_label = tr("Решение на Python", "Python тіліндегі шешім")
+    with st.expander(tr("Материалы для учителя", "Мұғалімге арналған материалдар")):
+        st.markdown(f"**{hint_label}**")
+        st.write(task["hint"])
+        st.markdown(f"**{solution_label}**")
+        st.code(task["solution"], language="python")
+        st.caption(tr("Перед уроком сверьте решение с примерами.", "Сабақ алдында шешімді мысалдармен салыстырып тексеріңіз."))
+    teacher_text = "\n".join([student_text, hint_label, task["hint"], "", solution_label, task["solution"], ""])
+    a, b = st.columns(2)
+    with a:
+        download(tr("Задача для ученика · TXT", "Оқушыға арналған есеп · TXT"), student_text,
+                 f"python-task-{lang}.txt", "text/plain", "py_student")
+    with b:
+        download(tr("Задача с решением · TXT", "Шешімі бар есеп · TXT"), teacher_text,
+                 f"python-teacher-{lang}.txt", "text/plain", "py_teacher")
+
+
+def use_python_example(task, story):
+    st.session_state.py_mode = "ai"
+    st.session_state.py_level = "hard" if story == "mars" else ("easy" if task["number"] <= 10 else "medium")
+    intro = tr("Придумай новую задачу на тот же приём, с другим сюжетом и другими примерами.",
+               "Осы тәсіл қолданылатын, оқиғасы мен мысалдары басқа жаңа есеп құрастыр.")
+    st.session_state[f"py_request_{lang}"] = f"{intro}\n\n{task['title']}\n{task['statement']}"
+
+
+def render_python():
+    modes = {"bank": tr("Готовые задачи", "Дайын есептер"), "ai": tr("Создать с Gemini", "Gemini арқылы құрастыру")}
+    mode = st.radio(tr("Источник задачи", "Есеп көзі"), list(modes), format_func=modes.get,
+                    horizontal=True, key="py_mode")
+    if mode == "bank":
+        stories = {"pizza": tr("PizzaBot · робот-курьер", "PizzaBot · курьер робот"),
+                   "mars": tr("Mars OS · алгоритмы марсохода", "Mars OS · марсжүргіш алгоритмдері")}
+        story = st.selectbox(tr("Сюжет", "Оқиға желісі"), list(stories), format_func=stories.get, key="py_story",
+                             on_change=st.session_state.update, args=({"py_number": 1},))
+        tasks = {task["number"]: task for task in bank_tasks(story, lang)}
+        number = st.selectbox(tr("Задача", "Есеп"), list(tasks),
+                              format_func=lambda n: f"{n}. {tasks[n]['title']}", key="py_number")
+        task = tasks[number]
+        render_python_exercise(task, from_bank=True)
+        st.button(tr("Взять за основу новой задачи", "Осыған ұқсас есеп құрастыру"),
+                  key="py_variation", on_click=use_python_example, args=(task, story))
+        return
+
+    request = st.text_area(tr("Какую задачу составить?", "Қандай есеп құрастырайық?"),
+        placeholder=tr("Например, задача на цикл for про расходы на школьной ярмарке.",
+                       "Мысалы, мектеп жәрмеңкесіндегі шығындар туралы for цикліне есеп."),
+        max_chars=MAX_REQUEST_LENGTH, key=f"py_request_{lang}")
+    a, b = st.columns(2)
+    grade = a.number_input(tr("Класс", "Сынып"), 1, 11, 7, key="py_grade")
+    levels = {"easy": tr("Начальный", "Бастапқы"), "medium": tr("Средний", "Орта"),
+              "hard": tr("Продвинутый", "Күрделі")}
+    level = b.selectbox(tr("Уровень", "Деңгей"), list(levels), format_func=levels.get, key="py_level")
+    signature = fingerprint([request, grade, level, lang])
+    if st.button(tr("Создать задачу", "Есеп құрастыру"), type="primary", key="py_generate"):
+        try:
+            prompt = build_task_prompt(request, grade, level, lang)
+            with st.spinner(tr("Составляю задачу и примеры…", "Есеп пен мысалдар құрастырылуда…")):
+                task = validate_task(core.parse_json_response(generate(prompt, json_mode=True)))
+                save_result("python", signature, task=task)
+        except Exception as exc:
+            show_error(exc)
+    result = saved_result("python", signature)
+    if result:
+        render_python_exercise(result["task"], from_bank=False)
 
 
 def render_ksp():
@@ -487,6 +586,6 @@ def render_warmup():
     render_text_result("warmup", signature)
 
 
-{"cards": render_cards, "ksp": render_ksp, "ktp": render_ktp, "eda": render_eda,
+{"cards": render_cards, "python": render_python, "ksp": render_ksp, "ktp": render_ktp, "eda": render_eda,
  "ml": render_ml, "photo": render_photo, "characteristic": render_characteristic,
  "warmup": render_warmup}[module]()

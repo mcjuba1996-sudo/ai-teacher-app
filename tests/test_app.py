@@ -1,4 +1,4 @@
-"""Offline Streamlit integration tests for both languages and all eight tools.
+"""Offline Streamlit integration tests for both languages and all tools.
 
 The Gemini boundary is mocked; uploaded files and generated documents stay in
 memory. Network clients are blocked as an extra guard against accidental calls.
@@ -30,7 +30,7 @@ from ui_helpers import ERRORS
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
 TEST_KEY = "mock-integration-key-not-a-secret"
-MODULES = ("cards", "ktp", "ksp", "eda", "ml", "photo", "characteristic", "warmup")
+MODULES = ("cards", "ktp", "ksp", "eda", "ml", "photo", "characteristic", "warmup", "python")
 
 
 def document_text(raw):
@@ -138,7 +138,7 @@ class AppIntegrationTests(unittest.TestCase):
     def assert_no_result(self, app, module, lang):
         self.assertNotIn(f"result_{module}_{lang}", app.session_state)
 
-    def test_all_eight_modules_open_in_both_languages(self):
+    def test_all_modules_open_in_both_languages(self):
         app = self.new_app()
         for lang in ("ru", "kk"):
             app.selectbox("language").select(lang).run()
@@ -147,7 +147,10 @@ class AppIntegrationTests(unittest.TestCase):
                     app.radio("module").set_value(module).run()
                     self.assert_no_exception(app)
                     self.assertEqual(len(app.error), 0)
-                    self.assertTrue(app.button(f"{module}_generate").label)
+                    if module == "python":
+                        self.assertEqual(app.radio("py_mode").value, "bank")
+                    else:
+                        self.assertTrue(app.button(f"{module}_generate").label)
                     self.assertTrue(app.title[0].value)
         self.ai.assert_not_called()
 
