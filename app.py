@@ -5,6 +5,7 @@ import json
 import os
 import zipfile
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -15,13 +16,24 @@ from ui_helpers import (DOCX_MIME, XLSX_MIME, ERRORS, fingerprint, upload_bytes,
                         text_document, image_attachment, read_google_cards)
 
 st.set_page_config(page_title="Bilim AI", page_icon="🎓", layout="wide")
-st.markdown("""<style>
-.stApp{background:#f8fafc}.block-container{max-width:1150px;padding-top:2rem}
-h1,h2,h3{color:#172554}[data-testid="stSidebar"]{background:#eef2ff}
-.stButton>button[kind="primary"]{background:#4f46e5;border-radius:10px}
-</style>""", unsafe_allow_html=True)
+st.html(Path(__file__).with_name("bilim.css"))
+st.sidebar.html(
+    '<div class="bilim-wordmark"><span class="bilim-monogram" aria-hidden="true">B</span>Bilim AI</div>'
+)
+
+
+def sync_translated_selections():
+    # Streamlit sends formatted labels to the browser. Reassign the stable
+    # option IDs on a language change to send the corresponding new labels.
+    for key in ("module", "cards_source", "ktp_source", "eda_source",
+                "ml_activity", "char_performance", "char_behaviour"):
+        if key in st.session_state:
+            st.session_state[key] = st.session_state[key]
+
+
 lang = st.sidebar.selectbox("🌐 Тіл / Язык", ["ru", "kk"],
-    format_func=lambda x: "Русский" if x == "ru" else "Қазақша", key="language")
+    format_func=lambda x: "Русский" if x == "ru" else "Қазақша", key="language",
+    on_change=sync_translated_selections)
 
 
 def tr(ru, kk):
@@ -38,9 +50,9 @@ MODULES = {
     "characteristic": ("👤 Педагогическая характеристика", "👤 Педагогикалық мінездеме"),
     "warmup": ("⚡ Разминки и интерактивы", "⚡ Сергіту сәттері"),
 }
-st.sidebar.markdown("## 🎓 Bilim AI")
-st.sidebar.caption(tr("Цифровой помощник учителя", "Мұғалімнің цифрлық көмекшісі"))
-user_key = st.sidebar.text_input("Gemini API Key", type="password", key="user_api_key",
+module = st.sidebar.radio(tr("Инструменты", "Құралдар"), list(MODULES), format_func=lambda x: tr(*MODULES[x]), key="module")
+ai_settings = st.sidebar.expander(tr("Подключение Gemini", "Gemini қосылымы"))
+user_key = ai_settings.text_input("Gemini API Key", type="password", key="user_api_key",
     help=tr("Необязательно, если настроен общий ключ.", "Ортақ кілт бапталса, міндетті емес."))
 try:
     settings = {key: st.secrets.get(key, "") for key in
@@ -49,18 +61,26 @@ except (FileNotFoundError, KeyError):
     settings = {}
 active_key, model_name, using_shared = ai_service.resolve_settings(os.environ, settings, user_key)
 if active_key:
-    st.sidebar.caption(tr("Общий ключ указан; проверится при запросе." if using_shared else "Ваш ключ указан; проверится при запросе.",
+    ai_settings.caption(tr("Общий ключ указан; проверится при запросе." if using_shared else "Ваш ключ указан; проверится при запросе.",
                           "Ортақ кілт көрсетілген; сұрау кезінде тексеріледі." if using_shared else "Сіздің кілтіңіз көрсетілген; сұрау кезінде тексеріледі."))
 else:
-    st.sidebar.info(tr("Без ключа доступны карточки из готовых данных, аналитика и демонстрация ML.",
+    ai_settings.info(tr("Без ключа доступны карточки из готовых данных, аналитика и демонстрация ML.",
                        "Кілтсіз дайын деректерден карточкалар, талдау және ML демонстрациясы қолжетімді."))
-with st.sidebar.expander(tr("Как подключить ИИ", "ЖИ қалай қосылады")):
-    st.markdown(tr("Получите ключ в [Google AI Studio](https://aistudio.google.com/app/apikey) и введите выше. Общий ключ настраивает владелец приложения.",
-                   "[Google AI Studio](https://aistudio.google.com/app/apikey) арқылы кілт алып, жоғарыда енгізіңіз. Ортақ кілтті қосымша иесі баптайды."))
-module = st.sidebar.radio(tr("Инструменты", "Құралдар"), list(MODULES), format_func=lambda x: tr(*MODULES[x]), key="module")
+ai_settings.markdown(tr("Получите ключ в [Google AI Studio](https://aistudio.google.com/app/apikey) и введите выше. Общий ключ настраивает владелец приложения.",
+                        "[Google AI Studio](https://aistudio.google.com/app/apikey) арқылы кілт алып, жоғарыда енгізіңіз. Ортақ кілтті қосымша иесі баптайды."))
 st.sidebar.caption(tr("Используйте демонстрационные данные и обозначения «Ученик 01». Не загружайте личные данные реальных учеников.",
                       "Демонстрациялық деректерді және «Оқушы 01» белгілерін қолданыңыз. Нақты оқушылардың жеке деректерін жүктемеңіз."))
-st.title(tr(*MODULES[module]))
+with st.container(key="bilim_heading"):
+    title = tr(*MODULES[module]).partition(" ")[2]
+    st.title(title)
+    if module == "cards":
+        st.caption(tr("Карточки и ответы сохраняются вместе. Готовый банк вопросов работает без ИИ.", "Карточкалар мен жауаптар бірге сақталады. Дайын сұрақтар қоры ЖИ-сіз жұмыс істейді."))
+    elif module == "ksp":
+        st.caption(tr("Укажите тему и цель обучения для выбранного класса. Готовый план можно скачать в Word.", "Таңдалған сыныптың сабақ тақырыбы мен оқу мақсатын енгізіңіз. Дайын жоспарды Word форматында жүктей аласыз."))
+    elif module == "ktp":
+        st.caption(tr("Задайте число недель и часов. План можно составить по списку тем или по PDF.", "Апта және сағат санын көрсетіңіз. Жоспарды тақырыптар тізімі немесе PDF бойынша жасауға болады."))
+    elif module == "photo":
+        st.caption(tr("Загрузите учебную работу без ФИО. Проверку ИИ должен подтвердить учитель.", "Аты-жөні жоқ оқу жұмысын жүктеңіз. ЖИ тексеруін мұғалім растауы керек."))
 
 
 def required(value):
@@ -115,7 +135,6 @@ def render_text_result(name, signature):
 
 
 def render_cards():
-    st.caption(tr("Карточки и ответы сохраняются вместе. Готовый банк вопросов работает без ИИ.", "Карточкалар мен жауаптар бірге сақталады. Дайын сұрақтар қоры ЖИ-сіз жұмыс істейді."))
     download(tr("Скачать Excel-шаблон", "Excel үлгісін жүктеу"), core.make_template(lang), "BilimAI_template.xlsx", XLSX_MIME, "cards_template")
     source = st.radio(tr("Источник вопросов", "Сұрақтар көзі"), ["demo", "excel", "google", "ai"],
         format_func=lambda x: {"demo": tr("Демонстрационный банк", "Демонстрациялық қор"), "excel": "Excel", "google": "Google Sheets", "ai": tr("Создать с ИИ", "ЖИ арқылы жасау")}[x], horizontal=True, key="cards_source")
@@ -213,7 +232,6 @@ def render_cards():
 
 
 def render_ksp():
-    st.caption(tr("План учитывает класс и вашу цель обучения. Проверьте материал перед уроком.", "Жоспар сыныпты және оқу мақсатын ескереді. Сабақ алдында материалды тексеріңіз."))
     a, b = st.columns(2)
     teacher = a.text_input(tr("Педагог (необязательно)", "Педагог (міндетті емес)"), key="ksp_teacher")
     subject = a.text_input(tr("Предмет", "Пән"), value="Информатика", key=f"ksp_subject_{lang}")
@@ -228,8 +246,8 @@ def render_ksp():
                 required(value)
             with st.spinner(tr("Создаю и проверяю план…", "Жоспар жасалып, тексерілуде…")):
                 prompt = core.build_ksp_prompt(subject, grade, topic, target, lang)
-                data = core.validate_ksp(core.parse_json_response(generate(prompt, json_mode=True)))
-                document = core.ksp_document(data, teacher, grade, topic, target, lang)
+                data = core.validate_ksp(core.parse_json_response(generate(prompt, json_mode=True)), require_timing=True)
+                document = core.ksp_document(data, teacher, grade, topic, target, lang, subject=subject)
                 save_result("ksp", signature, data=data, document=document, target=target, topic=topic)
             st.success(tr("План готов.", "Жоспар дайын."))
         except Exception as exc:
@@ -270,6 +288,7 @@ def render_ktp():
         pdf = st.file_uploader(tr("Программа или темы — PDF, до 10 МБ", "Бағдарлама немесе тақырыптар — PDF, 10 МБ дейін"), type=["pdf"], key="ktp_pdf")
     signature = fingerprint([subject, grade, academic_year, weeks, hours, topics, source, hashlib.sha256(pdf.getvalue()).hexdigest() if pdf else None, lang])
     if st.button(tr("Создать КТП", "КТЖ жасау"), type="primary", key="ktp_generate"):
+        progress = st.empty()
         try:
             required(subject)
             required(academic_year)
@@ -285,7 +304,6 @@ def render_ktp():
             with st.spinner(tr("Создаю и проверяю распределение уроков…", "Сабақтар жасалып, бөлінуі тексерілуде…")):
                 # Split annual output into quarters to keep responses within token limits.
                 full_data, offset = [], 0
-                progress = st.empty()
                 for q, week_count in weeks.items():
                     progress.info(tr(f"Готовлю четверть {q} из {quarters}…", f"{quarters} тоқсанның {q}-тоқсаны дайындалуда…"))
                     prompt = core.build_ktp_prompt(subject, grade, {q: week_count}, hours, topics, lang, academic_year)
@@ -300,10 +318,11 @@ def render_ktp():
                 data = core.validate_ktp(full_data, quarter_hours)
                 document = core.ktp_document(data, subject, grade, hours, academic_year, lang)
                 save_result("ktp", signature, data=data, document=document)
-                progress.empty()
             st.success(tr("КТП готов; количество уроков проверено.", "КТЖ дайын; сабақ саны тексерілді."))
         except Exception as exc:
             show_error(exc)
+        finally:
+            progress.empty()
     result = saved_result("ktp", signature)
     if result:
         download(tr("Скачать КТП — Word", "КТЖ жүктеу — Word"), result["document"], "calendar_plan.docx", key="ktp_download")
@@ -401,7 +420,6 @@ def render_ml():
 
 
 def render_photo():
-    st.caption(tr("Загрузите учебную работу без ФИО. Проверку ИИ должен подтвердить учитель.", "Аты-жөні жоқ оқу жұмысын жүктеңіз. ЖИ тексеруін мұғалім растауы керек."))
     upload = st.file_uploader(tr("Фото — JPG или PNG, до 10 МБ", "Фото — JPG немесе PNG, 10 МБ дейін"), type=["jpg", "jpeg", "png"], key="photo_upload")
     criteria = st.text_area(tr("Условие задания и критерии (если есть)", "Тапсырма шарты мен критерийлер (бар болса)"), key=f"photo_criteria_{lang}")
     signature = fingerprint([hashlib.sha256(upload.getvalue()).hexdigest() if upload else None, criteria, lang])

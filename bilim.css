@@ -1,0 +1,74 @@
+/* The installed Streamlit theme supplies all form, text and focus colors. */
+[data-testid="stMainBlockContainer"] {
+    max-width: 72rem;
+}
+
+.bilim-wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: .65rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -.035em;
+}
+
+.bilim-monogram {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: .7rem .7rem .7rem .2rem;
+    background: #6942a5;
+    color: white;
+    font: 700 1.7rem/1 Georgia, serif;
+}
+
+.st-key-bilim_heading {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    gap: .45rem;
+    padding: clamp(1rem, 2.5vw, 1.85rem);
+    border: 1px solid rgba(134, 111, 165, .32);
+    border-radius: 1rem;
+    background: linear-gradient(108deg, rgba(135, 96, 196, .08), transparent 70%);
+}
+
+.st-key-bilim_heading::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 0 0 auto;
+    width: min(27%, 14rem);
+    pointer-events: none;
+    background-image: linear-gradient(90deg, rgba(128, 91, 172, .12) 1px, transparent 1px),
+                      linear-gradient(rgba(128, 91, 172, .12) 1px, transparent 1px);
+    background-size: 1rem 1rem;
+    mask-image: linear-gradient(90deg, transparent, black);
+}
+
+.st-key-bilim_heading h1 {
+    padding: 0;
+    font-size: clamp(1.6rem, 3.1vw, 2.65rem);
+    line-height: 1.14;
+    letter-spacing: -.035em;
+    overflow-wrap: anywhere;
+}
+
+[data-testid="stSidebar"] .st-key-module [role="radiogroup"] label {
+    width: 100%;
+    min-height: 2.2rem;
+    padding: .2rem .48rem;
+    border-radius: .5rem;
+    box-sizing: border-box;
+}
+
+[data-testid="stSidebar"] .st-key-module label:has(input:checked) {
+    background-color: rgba(141, 100, 198, .14);
+    box-shadow: inset 3px 0 #8b65bb;
+}
+
+@media (max-width: 640px) {
+    .st-key-bilim_heading { padding: 1rem; }
+    .st-key-bilim_heading::after { display: none; }
+}

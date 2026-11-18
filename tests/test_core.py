@@ -1,6 +1,7 @@
 """Regression checks for teacher inputs, bilingual exports and safe validation."""
 import copy
 import io
+import json
 import unittest
 from collections import Counter
 
@@ -178,6 +179,26 @@ class LessonPlanTests(ErrorAssertions):
         invalid["stages"][1]["teacher"] = "..."
         self.assert_error("field_required", validate_ksp, invalid)
 
+    def test_ksp_rejects_broken_timing_before_exporting_a_new_plan(self):
+        valid_sets = [
+            ["Басы — 5 минут", "Ортасы — 30 минут", "Соңы — 10 минут"],
+            ["Начало 0–5 мин", "Практика 5–40 мин", "Итог 40–45 мин"],
+        ]
+        invalid_sets = [
+            ["Басы — 5 минут", "Ортасы — 35 минут", "Соңы — 20 минут"],
+            ["Начало 0–5 мин", "Практика 5–40 мин", "Итог 38–45 мин"],
+            ["Начало", "Практика", "Итог"],
+        ]
+        for valid, labels in [(True, v) for v in valid_sets] + [(False, v) for v in invalid_sets]:
+            with self.subTest(labels=labels):
+                data = ksp_sample()
+                for stage, label in zip(data["stages"], labels):
+                    stage["time"] = label
+                if valid:
+                    self.assertEqual(validate_ksp(data, require_timing=True)["stages"], data["stages"])
+                else:
+                    self.assert_error("ksp_timing_invalid", validate_ksp, data, require_timing=True)
+
     def test_ksp_export_preserves_teacher_target_and_has_three_stage_rows(self):
         target = "TEACHER-SUPPLIED-TARGET-EXACT"
         for lang, heading in (("ru", "Цель обучения"), ("kk", "Оқу мақсаты")):
@@ -192,6 +213,15 @@ class LessonPlanTests(ErrorAssertions):
         blob = ksp_document(ksp_sample(), "", 5, "Алгоритмы", "Составить алгоритм.", "ru")
         document = Document(io.BytesIO(blob))
         self.assertEqual(document.tables[0].rows[1].cells[1].text, "")
+
+    def test_ksp_keeps_the_selected_subject_separate_from_the_topic(self):
+        for lang, label, subject, topic in (("kk", "Пән", "Физика", "Тығыздық"),
+                                             ("ru", "Предмет", "Физика", "Плотность")):
+            with self.subTest(lang=lang):
+                blob = ksp_document(ksp_sample(), "", 7, topic, "Цель", lang, subject=subject)
+                doc = Document(io.BytesIO(blob))
+                self.assertIn([label, subject], [[c.text for c in row.cells] for row in doc.tables[0].rows])
+                self.assertIn(topic, [p.text for p in doc.paragraphs])
 
     def test_ktp_prompt_encodes_distribution_and_year(self):
         args = {"subject": "Информатика", "grade": 7, "hours_per_week": 1, "topics": "Алгоритмы", "lang": "kk", "academic_year": "2026–2027"}
@@ -217,6 +247,19 @@ class LessonPlanTests(ErrorAssertions):
         self.assert_error("ktp_numbering_invalid", validate_ktp, part, {2: 2})
         part[0]["lesson_num"], part[1]["lesson_num"] = 1, 2
         self.assertEqual([row["quarter"] for row in validate_ktp(part, {2: 2})], [2, 2])
+
+    def test_second_quarter_prompt_does_not_give_a_first_quarter_row_example(self):
+        prompt = build_ktp_prompt("Физика", 7, {2: 3}, 2, "Масса и объём", "ru", "2026–2027")
+        row_example, _ = json.JSONDecoder().raw_decode(prompt.split("Структура строки: ", 1)[1])
+        self.assertEqual((row_example["quarter"], row_example["lesson_num"]), (2, 1))
+
+    def test_multi_page_calendar_table_repeats_the_legend_and_lists_hours_per_quarter(self):
+        blob = ktp_document(ktp_sample(), "Информатика", 7, 1, "2026–2027", "kk")
+        doc = Document(io.BytesIO(blob))
+        self.assertTrue(doc.tables[0].rows[0]._tr.xpath("./w:trPr/w:tblHeader"))
+        self.assertIn("1-тоқсан — 2 сағ", document_text(blob))
+        self.assertIn("2-тоқсан — 2 сағ", document_text(blob))
+        self.assertGreater(doc.tables[0].columns[4].width, doc.tables[0].columns[1].width)
 
     def test_ktp_kazakh_export_localizes_headers_and_uses_requested_year(self):
         blob = ktp_document(ktp_sample(), "Информатика", 7, 1, "2026–2027", "kk")

@@ -248,6 +248,7 @@ class AppIntegrationTests(unittest.TestCase):
                 result = app.session_state[f"result_ksp_{lang}"]
                 exported = document_text(result["document"])
                 self.assertIn(target, exported)
+                self.assertIn("Информатика", exported)
                 self.assertNotIn("UNTRUSTED MODEL TARGET", exported)
                 self.assertIn("Қысқа мерзімді жоспар" if lang == "kk" else "Краткосрочный план", exported)
                 self.assertEqual(len(result["data"]["stages"]), 3)
@@ -303,6 +304,7 @@ class AppIntegrationTests(unittest.TestCase):
                     self.click(app, "ktp")
                     self.assert_error(app, code, lang)
                     self.assert_no_result(app, "ktp", lang)
+                    self.assertFalse(any("Готовлю четверть" in hint.value or "дайындалуда" in hint.value for hint in app.info))
                     self.assertNotIn("ktp_download", {button.key for button in app.download_button})
 
     def test_pdf_upload_is_sent_as_pdf_bytes(self):
@@ -317,6 +319,22 @@ class AppIntegrationTests(unittest.TestCase):
         self.assertEqual(len(app.error), 0)
         self.assertEqual(self.ai.call_args.kwargs["attachments"], [("application/pdf", raw)])
         self.assertTrue(self.ai.call_args.kwargs["json_mode"])
+
+    def test_language_switch_resends_selected_plan_and_source_to_browser(self):
+        app = self.new_app("ktp")
+        app.radio("ktp_source").set_value("pdf").run()
+        for language in ("kk", "ru"):
+            app.selectbox("language").select(language).run()
+            # The browser retains localized labels across reruns unless explicitly updated.
+            for key, value in (("module", "ktp"), ("ktp_source", "pdf")):
+                radio = app.radio(key)
+                self.assertEqual(radio.value, value)
+                self.assertTrue(radio.proto.set_value)
+                self.assertIn(radio.proto.raw_value, radio.proto.options)
+            app.number_input("ktp_grade").set_value(7).run()
+            self.assert_no_exception(app)
+            self.assertEqual(app.radio("module").value, "ktp")
+            self.assertIn("ktp_pdf", {upload.key for upload in app.file_uploader})
 
     def test_eda_demo_metrics_and_ml_extremes_without_key(self):
         for lang in ("ru", "kk"):
